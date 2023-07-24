@@ -1,8 +1,15 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { isSuiNSName, useResolveSuiNSAddress, useResolveSuiNSName } from '@mysten/core';
+import {
+	isSuiNSName,
+	useGetSuiNsAvatar,
+	useResolveSuiNSAddress,
+	useResolveSuiNSName,
+} from '@mysten/core';
 import { Heading, LoadingIndicator } from '@mysten/ui';
+import { useWalletKit } from '@mysten/wallet-kit';
+import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 
 import { ErrorBoundary } from '../../components/error-boundary/ErrorBoundary';
@@ -10,14 +17,37 @@ import { TransactionsForAddress } from '../../components/transactions/Transactio
 import { PageLayout } from '~/components/Layout/PageLayout';
 import { OwnedCoins } from '~/components/OwnedCoins';
 import { OwnedObjects } from '~/components/OwnedObjects';
+import { Link } from '~/ui/Link';
 import { PageHeader } from '~/ui/PageHeader';
+import { Image } from '~/ui/image/Image';
+
+export function SuiNsAvatar({ address }: { address?: string }) {
+	const { data: domainName } = useResolveSuiNSName(address);
+	const avatar = useGetSuiNsAvatar(domainName!);
+	const { wallets, currentAccount, connect } = useWalletKit();
+	const addressIsUser = currentAccount?.address === address;
+
+	useEffect(() => {
+		connect(wallets[0].name);
+	}, [wallets, connect]);
+
+	if (!address || !avatar || !avatar.data) return null;
+
+	return addressIsUser ? (
+		<Link
+			href="https://suins.io/account/my-names"
+			className={`${addressIsUser ? 'cursor-pointer' : ''}`}
+		>
+			<Image src={avatar.data?.image_url} alt={domainName ?? address} size="md" rounded="2xl" />
+		</Link>
+	) : (
+		<Image src={avatar.data?.image_url} alt={domainName ?? address} size="md" rounded="2xl" />
+	);
+}
 
 function AddressResult({ address }: { address: string }) {
-	const { data: domainName } = useResolveSuiNSName(address);
-
 	return (
 		<div className="space-y-12">
-			<PageHeader type="Address" title={address} subtitle={domainName} />
 			<div>
 				<div className="border-b border-gray-45 pb-5 md:mt-12">
 					<Heading color="gray-90" variant="heading4/semibold">
@@ -60,11 +90,29 @@ function SuiNSAddressResult({ name }: { name: string }) {
 }
 
 export default function AddressResultPage() {
-	const { id } = useParams();
+	const { id: address } = useParams();
+	const { data: domainName } = useResolveSuiNSName(address);
+
 	return (
 		<PageLayout
+			gradientContent={
+				<PageHeader
+					before={
+						<div className="rounded-xl">
+							<SuiNsAvatar address={address} />
+						</div>
+					}
+					type="Address"
+					title={address!}
+					subtitle={domainName}
+				/>
+			}
 			content={
-				isSuiNSName(id!) ? <SuiNSAddressResult name={id!} /> : <AddressResult address={id!} />
+				isSuiNSName(address!) ? (
+					<SuiNSAddressResult name={address!} />
+				) : (
+					<AddressResult address={address!} />
+				)
 			}
 		/>
 	);

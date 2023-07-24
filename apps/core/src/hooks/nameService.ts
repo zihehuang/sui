@@ -36,7 +36,7 @@ export function useResolveSuiNSAddress(name?: string | null) {
 
 export function useResolveSuiNSName(address?: string | null) {
 	const rpc = useRpcClient();
-	const enabled = useSuiNSEnabled();
+	const enabled = true;
 
 	return useQuery({
 		queryKey: ['resolve-suins-name', address],

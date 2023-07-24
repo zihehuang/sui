@@ -129,7 +129,7 @@ const getResultsForValidatorByPoolIdOrSuiAddress = async (
 export function useSearch(query: string) {
 	const rpc = useRpcClient();
 	const { data: systemStateSummery } = useGetSystemState();
-	const suiNSEnabled = useSuiNSEnabled();
+	const suiNSEnabled = true;
 
 	return useQuery({
 		// eslint-disable-next-line @tanstack/query/exhaustive-deps
