@@ -5,9 +5,13 @@ import { useEffect } from 'react';
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 
 import { useInitialPageView } from './hooks/useInitialPageView';
+<<<<<<< HEAD
 
+=======
+>>>>>>> 7dd611bdb9 (manage accounts flow)
 import { useStorageMigrationStatus } from './hooks/useStorageMigrationStatus';
 import { StorageMigrationPage } from './pages/StorageMigrationPage';
+<<<<<<< HEAD
 
 import { AccountsPage } from './pages/accounts/AccountsPage';
 import { AddAccountPage } from './pages/accounts/AddAccountPage';
@@ -17,6 +21,8 @@ import { ImportPassphrasePage } from './pages/accounts/ImportPassphrasePage';
 import { ImportPrivateKeyPage } from './pages/accounts/ImportPrivateKeyPage';
 import { ManageAccountsPage } from './pages/accounts/manage/ManageAccountsPage';
 import { ProtectAccountPage } from './pages/accounts/ProtectAccountPage';
+=======
+>>>>>>> b7788f5da3 (manage accounts flow)
 import { AccountsDev } from './pages/accounts-dev';
 
 <<<<<<< HEAD
@@ -100,7 +106,7 @@ const App = () => {
 	if (storageMigration.data !== 'ready') {
 		return <StorageMigrationPage />;
 	}
-	if (true) return <ZkRoutes />;
+
 
 	return (
 		<Routes>
@@ -175,45 +181,6 @@ const App = () => {
 					</Route>
 				</>
 			) : null}
-<<<<<<< HEAD
-=======
-
-			<Route path="/*" element={<HomePage />}>
-				<Route path="tokens/*" element={<TokensPage />} />
-				<Route path="nfts/*" element={<AssetsPage />} />
-				<Route path="apps/*" element={<AppsPage />} />
-				<Route path="nft-details" element={<NFTDetailsPage />} />
-				<Route path="kiosk" element={<KioskDetailsPage />} />
-				<Route path="nft-transfer/:nftId" element={<NftTransferPage />} />
-				<Route path="transactions/:status?" element={<TransactionBlocksPage />} />
-				<Route path="send" element={<TransferCoinPage />} />
-				<Route path="send/select" element={<CoinsSelectorPage />} />
-				<Route path="stake/*" element={<Staking />} />
-				<Route path="receipt" element={<ReceiptPage />} />
-				<Route path="onramp" element={<OnrampPage />} />
-				<Route path="*" element={<Navigate to="/tokens" replace={true} />} />
-			</Route>
-
-			<Route path="welcome" element={<WelcomePage />} />
-
-			<Route path="/dapp/*" element={<HomePage disableNavigation />}>
-				<Route path="connect/:requestID" element={<SiteConnectPage />} />
-				<Route path="approve/:requestID" element={<ApprovalRequestPage />} />
-				<Route path="qredo-connect/:requestID" element={<QredoConnectInfoPage />} />
-				<Route path="qredo-connect/:id/select" element={<SelectQredoAccountsPage />} />
-			</Route>
-
-			<Route path="/initialize" element={<InitializePage />}>
-				<Route path="select" element={<SelectPage />} />
-				<Route path="create" element={<CreatePage />} />
-				<Route path="import" element={<ImportPage />} />
-				<Route path="backup" element={<BackupPage />} />
-				<Route path="backup-imported" element={<BackupPage mode="imported" />} />
-			</Route>
-			<Route path="locked" element={<LockedPage />} />
-			<Route path="forgot-password" element={<ForgotPasswordPage />} />
-			<Route path="restricted" element={<RestrictedPage />} />
->>>>>>> bbeacfd2ce (move accounts list into tokens page)
 		</Routes>
 	);
 };

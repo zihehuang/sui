@@ -13,6 +13,7 @@ type AccountListItemProps = {
 	address: string;
 	icon?: ReactNode;
 	handleLockAccount?: () => void;
+	gradient?: boolean;
 	handleUnlockAccount?: () => void;
 	editable?: boolean;
 };

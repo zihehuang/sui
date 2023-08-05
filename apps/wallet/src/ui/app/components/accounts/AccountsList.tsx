@@ -4,9 +4,15 @@
 import { Filter16, Plus12 } from '@mysten/icons';
 import * as ToggleGroup from '@radix-ui/react-toggle-group';
 import { useState } from 'react';
+<<<<<<< HEAD
 import { AccountListItem } from './AccountListItem';
 import { FooterLink } from './FooterLink';
 import { UnlockAccountModal } from './UnlockAccountModal';
+=======
+import { ButtonLink } from './ButtonLink';
+import { UnlockAccountModal } from './UnlockAccountModal';
+import { AccountListToggleGroupItem } from '../../components/accounts/AccountListItem';
+>>>>>>> b7788f5da3 (manage accounts flow)
 import { useActiveAddress } from '../../hooks';
 import { useBackgroundClient } from '../../hooks/useBackgroundClient';
 import { Heading } from '../../shared/heading';

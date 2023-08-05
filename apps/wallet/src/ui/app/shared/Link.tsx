@@ -21,6 +21,7 @@ const styles = cva(
 				hover: 'no-underline hover:underline',
 			},
 			color: {
+				heroOp40: ['text-hero/40'],
 				steelDark: [
 					'text-steel-dark hover:text-steel-darker focus:text-steel-darker disabled:text-steel-dark',
 				],
@@ -54,6 +55,7 @@ const styles = cva(
 const iconStyles = cva(['transition flex'], {
 	variants: {
 		color: {
+			heroOp40: ['text-hero/40'],
 			steelDark: [
 				'text-steel group-hover:text-steel-darker group-focus:text-steel-darker group-disabled:text-steel-dark',
 			],
