@@ -66,13 +66,13 @@ describe('Keyring', () => {
 			});
 		});
 
-		describe('deriveNextAccount', () => {
+		describe('deriveNextAccount', async () => {
 			it('creates the account with index 1 and emits a change event', async () => {
 				const eventSpy = vi.fn();
 				k.on('accountsChanged', eventSpy);
 				const account = await k.deriveNextAccount();
 				expect(account!.derivationPath).toBe("m/44'/784'/1'/0'/0'");
-				const accounts = k.getAccounts();
+				const accounts = await k.getAccounts();
 				expect(accounts?.length).toBe(3);
 				expect(eventSpy).toHaveBeenCalledOnce();
 				expect(eventSpy.mock.calls[0][0].length).toBe(3);

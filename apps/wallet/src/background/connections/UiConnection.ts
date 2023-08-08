@@ -80,13 +80,30 @@ export class UiConnection extends Connection {
 					method: 'walletStatusUpdate',
 					return: {
 						isLocked,
-						accounts: (await Keyring.getAccounts())?.map((anAccount) => anAccount.toJSON()) || [],
+						accounts:
+							(await Keyring.getAccounts())?.map((anAccount: any) => anAccount.toJSON()) || [],
 						activeAddress: (await Keyring.getActiveAccount())?.address || null,
 						isInitialized: await Keyring.isWalletInitialized(),
 					},
 				},
 				replyForId,
 			),
+		);
+	}
+
+	public async createMnemonicAccountSource(password: string, entropy: string) {
+		this.send(
+			createMessage<MethodPayload<'createAccountSource'>>({
+				type: 'method-payload',
+				method: 'createAccountSource',
+				args: {
+					type: 'mnemonic',
+					params: {
+						password,
+						entropy,
+					},
+				},
+			}),
 		);
 	}
 
@@ -201,8 +218,10 @@ export class UiConnection extends Connection {
 					),
 				);
 			} else if (await accountSourcesHandleUIMessage(msg, this)) {
+				console.log('accountSourcesHandleUIMessage');
 				return;
 			} else if (await accountsHandleUIMessage(msg, this)) {
+				console.log('accountsHandleUIMessage');
 				return;
 			} else if (isMethodPayload(payload, 'getStorageMigrationStatus')) {
 				this.send(

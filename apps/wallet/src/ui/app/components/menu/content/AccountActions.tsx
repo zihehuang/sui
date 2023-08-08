@@ -7,7 +7,6 @@ import { VerifyLedgerConnectionStatus } from './VerifyLedgerConnectionStatus';
 import { BadgeLabel } from '../../BadgeLabel';
 import { useNextMenuUrl } from '../hooks';
 import { AccountType, type SerializedAccount } from '_src/background/keyring/Account';
-import { Button } from '_src/ui/app/shared/ButtonUI';
 import { Link } from '_src/ui/app/shared/Link';
 import { Button } from '_src/ui/app/shared/ButtonUI';
 

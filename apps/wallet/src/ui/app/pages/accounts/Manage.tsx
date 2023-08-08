@@ -5,13 +5,14 @@ import { Plus12 } from '@mysten/icons';
 import { useNavigate } from 'react-router-dom';
 import { AccountItem } from '../../components/accounts/AccountItem';
 import { ButtonLink } from '../../components/accounts/ButtonLink';
-import { AccountActions } from '../../components/menu/content/AccountActions';
+// import { AccountActions } from '../../components/menu/content/AccountActions';
 import Overlay from '../../components/overlay';
-import { useAccounts } from '../../hooks/useAccounts';
+
+import { useAccounts } from '../../hooks/accounts-v2/useAccounts';
 import { Heading } from '../../shared/heading';
 
 export function ManageAccountsPage() {
-	const accounts = useAccounts();
+	const { data: accounts } = useAccounts();
 	const navigate = useNavigate();
 	return (
 		<Overlay showModal title="Manage Accounts" closeOverlay={() => navigate('/home')}>
@@ -24,7 +25,7 @@ export function ManageAccountsPage() {
 
 					<ButtonLink color="heroOp40" icon={<Plus12 />} text="Create New" />
 				</div>
-				{accounts.map((account) => {
+				{accounts?.map((account) => {
 					return (
 						<div className="flex flex-col gap-3">
 							<AccountItem
@@ -40,7 +41,7 @@ export function ManageAccountsPage() {
 									</div>
 								}
 							/>
-							<AccountActions account={account} />
+							{/* <AccountActions account={account} /> */}
 						</div>
 					);
 				})}

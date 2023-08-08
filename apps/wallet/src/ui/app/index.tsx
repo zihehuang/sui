@@ -5,13 +5,8 @@ import { useEffect } from 'react';
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 
 import { useInitialPageView } from './hooks/useInitialPageView';
-<<<<<<< HEAD
-
-=======
->>>>>>> 7dd611bdb9 (manage accounts flow)
 import { useStorageMigrationStatus } from './hooks/useStorageMigrationStatus';
 import { StorageMigrationPage } from './pages/StorageMigrationPage';
-<<<<<<< HEAD
 
 import { AccountsPage } from './pages/accounts/AccountsPage';
 import { AddAccountPage } from './pages/accounts/AddAccountPage';
@@ -21,28 +16,9 @@ import { ImportPassphrasePage } from './pages/accounts/ImportPassphrasePage';
 import { ImportPrivateKeyPage } from './pages/accounts/ImportPrivateKeyPage';
 import { ManageAccountsPage } from './pages/accounts/manage/ManageAccountsPage';
 import { ProtectAccountPage } from './pages/accounts/ProtectAccountPage';
-=======
->>>>>>> b7788f5da3 (manage accounts flow)
 import { AccountsDev } from './pages/accounts-dev';
 
-<<<<<<< HEAD
 import { ApprovalRequestPage } from './pages/approval-request';
-=======
-import AssetsPage from './pages/home/assets';
-import { QredoConnectInfoPage } from './pages/qredo-connect/QredoConnectInfoPage';
-import { SelectQredoAccountsPage } from './pages/qredo-connect/SelectQredoAccountsPage';
-import { RestrictedPage } from './pages/restricted';
-import WelcomePage from './pages/welcome';
-import { TokensV2 } from './pages/zklogin/TokensV2';
-import { AppType } from './redux/slices/app/AppType';
-import { Staking } from './staking/home';
-import { ZkRoutes } from './zk-routes';
-import ForgotPasswordPage from '_app/wallet/forgot-password-page';
-import LockedPage from '_app/wallet/locked-page';
-import { useAppDispatch, useAppSelector } from '_hooks';
-import { ApprovalRequestPage } from '_pages/approval-request';
-
->>>>>>> bbeacfd2ce (move accounts list into tokens page)
 import HomePage, {
 	AppsPage,
 	AssetsPage,
@@ -66,7 +42,7 @@ import { SelectQredoAccountsPage } from './pages/qredo-connect/SelectQredoAccoun
 
 import { RestrictedPage } from './pages/restricted';
 import SiteConnectPage from './pages/site-connect';
-import WelcomePage from './pages/welcome';
+
 import { AppType } from './redux/slices/app/AppType';
 import { Staking } from './staking/home';
 import LockedPage from './wallet/locked-page';
@@ -75,6 +51,7 @@ import { useAppDispatch, useAppSelector } from '_hooks';
 
 import { setNavVisibility } from '_redux/slices/app';
 import { NEW_ACCOUNTS_ENABLED } from '_src/shared/constants';
+import { WelcomePage } from './pages/zklogin/WelcomePage';
 
 const HIDDEN_MENU_PATHS = [
 	'/nft-details',
@@ -106,7 +83,6 @@ const App = () => {
 	if (storageMigration.data !== 'ready') {
 		return <StorageMigrationPage />;
 	}
-
 
 	return (
 		<Routes>

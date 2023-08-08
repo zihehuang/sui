@@ -12,7 +12,6 @@ import { ProtectAccountPage } from './pages/accounts/ProtectAccountPage';
 
 import HomePage, { AssetsPage } from './pages/home';
 import TokenDetails from './pages/home/tokens/TokensDetails';
-// import WelcomePage from './pages/welcome';
 import LockedPage from './wallet/locked-page';
 import { ForgotPasswordPage as ForgotPasswordPageV2 } from '_pages/accounts/ForgotPasswordPage';
 import { WelcomePage as WelcomePageV2 } from '_pages/zklogin/WelcomePage';

@@ -95,6 +95,7 @@ export async function getQredoAccountSource(filter: string | QredoConnectIdentit
 
 export async function accountSourcesHandleUIMessage(msg: Message, uiConnection: UiConnection) {
 	const { payload } = msg;
+
 	if (isMethodPayload(payload, 'createAccountSource')) {
 		await uiConnection.send(
 			createMessage<MethodPayload<'accountSourceCreationResponse'>>(

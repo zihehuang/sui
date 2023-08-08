@@ -13,6 +13,7 @@ import { getAccountSourceByID } from '../account-sources';
 import { MnemonicAccountSource } from '../account-sources/MnemonicAccountSource';
 import { type UiConnection } from '../connections/UiConnection';
 import { backupDB, getDB } from '../db';
+import { STORAGE_ACTIVE_ACCOUNT } from '../keyring';
 import { getFromLocalStorage, makeUniqueKey } from '../storage-utils';
 import { createMessage, type Message } from '_src/shared/messaging/messages';
 import {
@@ -68,7 +69,7 @@ export async function isAccountsInitialized() {
 }
 
 export async function getActiveAccount() {
-	const accountID = await getFromLocalStorage<string>('active-account-id-key');
+	const accountID = await getFromLocalStorage<string>(STORAGE_ACTIVE_ACCOUNT);
 	if (!accountID) {
 		return null;
 	}

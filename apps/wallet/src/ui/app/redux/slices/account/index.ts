@@ -31,6 +31,23 @@ export const createVault = createAsyncThunk<
 	await background.unlockWallet(password);
 });
 
+export const createMnemonicAccountSource = createAsyncThunk<
+	void,
+	{
+		importedEntropy?: string;
+		password: string;
+	},
+	AppThunkConfig
+>('account/createVault', async ({ importedEntropy, password }, { extra: { background } }) => {
+	const accountSource = await background.createMnemonicAccountSource({
+		password,
+		entropy: importedEntropy,
+	});
+
+	await background.unlockAccountSourceOrAccount({ id: accountSource.id, password });
+	await background.createAccounts({ type: 'mnemonic-derived', sourceID: accountSource.id });
+});
+
 export const loadEntropyFromKeyring = createAsyncThunk<
 	string,
 	{ password?: string }, // can be undefined when we know Keyring is unlocked

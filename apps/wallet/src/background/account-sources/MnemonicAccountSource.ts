@@ -70,6 +70,7 @@ export class MnemonicAccountSource extends AccountSource<
 			entropyHex: entropyToSerialized(entropy),
 			mnemonicSeedHex: mnemonicToSeedHex(entropyToMnemonic(entropy)),
 		};
+		console.log('decryptedData', decryptedData);
 		const dataSerialized: MnemonicAccountSourceSerialized = {
 			id: makeUniqueKey(),
 			type: 'mnemonic',
@@ -138,7 +139,9 @@ export class MnemonicAccountSource extends AccountSource<
 			typeof derivationPathIndex !== 'undefined'
 				? makeDerivationPath(derivationPathIndex)
 				: await this.getAvailableDerivationPath();
+		console.log(derivationPath);
 		const keyPair = await this.deriveKeyPair(derivationPath);
+		console.log(keyPair);
 		return MnemonicAccount.createNew({ keyPair, derivationPath, sourceID: this.id });
 	}
 

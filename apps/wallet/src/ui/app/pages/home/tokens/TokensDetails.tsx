@@ -45,6 +45,7 @@ import { usePinnedCoinTypes } from '_src/ui/app/hooks/usePinnedCoinTypes';
 import { useRecognizedPackages } from '_src/ui/app/hooks/useRecognizedPackages';
 import PageTitle from '_src/ui/app/shared/PageTitle';
 import FaucetRequestButton from '_src/ui/app/shared/faucet/FaucetRequestButton';
+import { useAccounts } from '_src/ui/app/hooks/accounts-v2/useAccounts';
 
 type TokenDetailsProps = {
 	coinType?: string;
@@ -185,12 +186,12 @@ function TokenDetails({ coinType }: TokenDetailsProps) {
 	const accountAddress = useActiveAddress();
 	const { data: domainName } = useResolveSuiNSName(accountAddress);
 	const { staleTime, refetchInterval } = useCoinsReFetchingConfig();
-	const {
-		data: coinBalance,
-		isError,
-		isLoading,
-		isFetched,
-	} = useGetCoinBalance(activeCoinType, accountAddress, refetchInterval, staleTime);
+	// const {
+	// 	data: coinBalance,
+	// 	isError,
+	// 	isLoading,
+	// 	isFetched,
+	// } = useGetCoinBalance(activeCoinType, accountAddress, refetchInterval, staleTime);
 	const { apiEnv } = useAppSelector((state) => state.app);
 	const { request } = useAppsBackend();
 	const { data } = useQuery({
@@ -205,23 +206,23 @@ function TokenDetails({ coinType }: TokenDetailsProps) {
 		enabled: apiEnv === API_ENV.mainnet,
 	});
 
-	const {
-		data: coinBalances,
-		isLoading: coinBalancesLoading,
-		isFetched: coinBalancesFetched,
-	} = useGetAllBalances(accountAddress, staleTime, refetchInterval, filterAndSortTokenBalances);
+	// const {
+	// 	data: coinBalances,
+	// 	isLoading: coinBalancesLoading,
+	// 	isFetched: coinBalancesFetched,
+	// } = useGetAllBalances(accountAddress, staleTime, refetchInterval, filterAndSortTokenBalances);
 
 	const BullsharkInterstitialEnabled = useFeature<boolean>(
 		FEATURES.BULLSHARK_QUESTS_INTERSTITIAL,
 	).value;
 
-	const { providers } = useOnrampProviders();
+	// const { providers } = useOnrampProviders();
 
-	const tokenBalance = BigInt(coinBalance?.totalBalance ?? 0);
+	// const tokenBalance = BigInt(coinBalance?.totalBalance ?? 0);
 
-	const coinSymbol = useMemo(() => Coin.getCoinSymbol(activeCoinType), [activeCoinType]);
+	// const coinSymbol = useMemo(() => Coin.getCoinSymbol(activeCoinType), [activeCoinType]);
 	// Avoid perpetual loading state when fetching and retry keeps failing add isFetched check
-	const isFirstTimeLoading = isLoading && !isFetched;
+	// const isFirstTimeLoading = isLoading && !isFetched;
 
 	useEffect(() => {
 		const dismissed = localStorage.getItem('bullshark-interstitial-dismissed');
@@ -238,7 +239,7 @@ function TokenDetails({ coinType }: TokenDetailsProps) {
 		);
 	}
 
-	const accountHasSui = coinBalances?.some(({ coinType }) => coinType === SUI_TYPE_ARG);
+	// const accountHasSui = coinBalances?.some(({ coinType }) => coinType === SUI_TYPE_ARG);
 
 	return (
 		<>
@@ -254,8 +255,8 @@ function TokenDetails({ coinType }: TokenDetailsProps) {
 				</div>
 			)}
 
-			<Loading loading={isFirstTimeLoading}>
-				{coinType && <PageTitle title={coinSymbol} back="/tokens" />}
+			<Loading loading={false}>
+				{/* {coinType && <PageTitle title={coinSymbol} back="/tokens" />} */}
 
 				<div
 					className="flex flex-col h-full flex-1 flex-grow items-center overflow-y-auto gap-8"
@@ -263,14 +264,14 @@ function TokenDetails({ coinType }: TokenDetailsProps) {
 				>
 					<AccountsList />
 					<div className="flex flex-col">
-						<PortfolioName name={domainName ?? formatAddress(accountAddress!)} />
+						{/* <PortfolioName name={domainName ?? formatAddress(accountAddress!)} /> */}
 						<div
 							data-testid="coin-balance"
 							className="bg-sui/10 rounded-2xl py-5 px-4 flex flex-col w-full gap-3 items-center mt-4"
 						>
-							{accountHasSui ? (
-								<CoinBalance amount={BigInt(tokenBalance)} type={activeCoinType} />
-							) : (
+							{/* <CoinBalance amount={BigInt(tokenBalance)} type={activeCoinType} /> */}
+
+							{false ? null : (
 								<div className="flex flex-col gap-5">
 									<div className="flex flex-col flex-nowrap justify-center items-center text-center px-2.5">
 										<SvgSuiTokensStack className="h-14 w-14 text-steel" />
@@ -283,15 +284,15 @@ function TokenDetails({ coinType }: TokenDetailsProps) {
 									<FaucetRequestButton />
 								</div>
 							)}
-							{isError ? (
+							{/* {isError ? (
 								<Alert>
 									<div>
 										<strong>Error updating balance</strong>
 									</div>
 								</Alert>
-							) : null}
+							) : null} */}
 							<div className="grid grid-cols-3 gap-3 w-full">
-								<LargeButton
+								{/* <LargeButton
 									center
 									to="/onramp"
 									disabled={(coinType && coinType !== SUI_TYPE_ARG) || !providers?.length}
@@ -318,21 +319,21 @@ function TokenDetails({ coinType }: TokenDetailsProps) {
 
 								<LargeButton center to="/" disabled top={<Swap16 />}>
 									Swap
-								</LargeButton>
+								</LargeButton> */}
 							</div>
-							<div className="w-full">
+							{/* <div className="w-full">
 								{activeCoinType === SUI_TYPE_ARG && accountAddress ? (
 									<TokenIconLink disabled={!tokenBalance} accountAddress={accountAddress} />
 								) : null}
-							</div>
+							</div> */}
 						</div>
 					</div>
-
+					{/* 
 					<MyTokens
 						coinBalances={coinBalances ?? []}
 						isLoading={coinBalancesLoading}
 						isFetched={coinBalancesFetched}
-					/>
+					/> */}
 				</div>
 			</Loading>
 		</>
