@@ -2,12 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { useResolveSuiNSName } from '@mysten/core';
+import { ArrowUpRight12, Copy12 } from '@mysten/icons';
 import { formatAddress } from '@mysten/sui.js/utils';
 
 import cn from 'classnames';
 import { forwardRef, type ReactNode } from 'react';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
+import { IconButton } from '../IconButton';
 import { Text } from '_src/ui/app/shared/text';
 
 interface AccountItemProps {
@@ -38,7 +40,7 @@ export const AccountItem = forwardRef<HTMLDivElement, AccountItemProps>(
 			<div
 				ref={ref}
 				className={cn(
-					'flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-solid border-hero/10 cursor-pointer bg-white/40 hover:bg-white/80 group',
+					'flex flex-wrap items-center gap-3 px-4 py-3 rounded-xl border border-solid border-hero/10 bg-white/40 hover:bg-white/80 group',
 					{ 'bg-white/80 shadow-card-soft': selected },
 					{ 'bg-hero/10 border-none hover:bg-white/40 shadow-none': disabled },
 					{ 'bg-gradients-graph-cards': background === 'gradient' },
@@ -50,16 +52,13 @@ export const AccountItem = forwardRef<HTMLDivElement, AccountItemProps>(
 					<Text variant="pBody" weight="semibold" color="steel-darker" truncate>
 						{accountName}
 					</Text>
-					<button
-						className="appearance-none outline-0 bg-transparent border-0 p-0 cursor-pointer text-steel-dark hover:text-steel-darker"
-						onClick={copyAddress}
-					>
+					<div className="text-steel-dark flex gap-1.5 leading-none">
 						<Text variant="subtitle" weight="semibold" truncate>
 							{formatAddress(account.address)}
 						</Text>
-					</button>
-					{/* TODO: replacing the link to Explorer with copy to clipboard for now - remove or restore this if needed */}
-					{/* <AddressLink address={address} /> */}
+						<IconButton icon={<Copy12 />} onClick={copyAddress} variant="subtle" />
+						<IconButton icon={<ArrowUpRight12 />} onClick={copyAddress} />
+					</div>
 				</div>
 				{after}
 			</div>
