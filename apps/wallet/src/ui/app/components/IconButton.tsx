@@ -2,10 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { type VariantProps, cva } from 'class-variance-authority';
-import { type MouseEventHandler } from 'react';
+import { ButtonOrLink, type ButtonOrLinkProps } from '../shared/utils/ButtonOrLink';
 
-interface IconButtonProps extends VariantProps<typeof buttonStyles> {
-	onClick: MouseEventHandler;
+interface IconButtonProps extends ButtonOrLinkProps, VariantProps<typeof buttonStyles> {
 	icon: JSX.Element;
 }
 
@@ -26,6 +25,13 @@ const buttonStyles = cva(
 	},
 );
 
-export function IconButton({ onClick, icon, variant }: IconButtonProps) {
-	return <button onClick={onClick} className={buttonStyles({ variant })} children={icon} />;
+export function IconButton({ onClick, icon, variant, ...buttonOrLinkProps }: IconButtonProps) {
+	return (
+		<ButtonOrLink
+			onClick={onClick}
+			className={buttonStyles({ variant })}
+			children={icon}
+			{...buttonOrLinkProps}
+		/>
+	);
 }

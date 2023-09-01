@@ -9,7 +9,9 @@ import cn from 'classnames';
 import { forwardRef, type ReactNode } from 'react';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
+import { useExplorerLink } from '../../hooks/useExplorerLink';
 import { IconButton } from '../IconButton';
+import { ExplorerLinkType } from '../explorer-link/ExplorerLinkType';
 import { Text } from '_src/ui/app/shared/text';
 
 interface AccountItemProps {
@@ -32,6 +34,10 @@ export const AccountItem = forwardRef<HTMLDivElement, AccountItemProps>(
 		const accountName = account?.nickname ?? domainName ?? formatAddress(address);
 		const copyAddress = useCopyToClipboard(account?.address!, {
 			copySuccessMessage: 'Address copied',
+		});
+		const explorerHref = useExplorerLink({
+			type: ExplorerLinkType.address,
+			address: account?.address!,
 		});
 
 		if (!account) return null;
@@ -57,7 +63,9 @@ export const AccountItem = forwardRef<HTMLDivElement, AccountItemProps>(
 							{formatAddress(account.address)}
 						</Text>
 						<IconButton icon={<Copy12 />} onClick={copyAddress} variant="subtle" />
-						<IconButton icon={<ArrowUpRight12 />} onClick={copyAddress} />
+						{explorerHref ? (
+							<IconButton title="View on Explorer" href={explorerHref} icon={<ArrowUpRight12 />} />
+						) : null}
 					</div>
 				</div>
 				{after}
