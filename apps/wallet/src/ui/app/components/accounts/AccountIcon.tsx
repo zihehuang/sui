@@ -15,11 +15,10 @@ function SuiIcon() {
 function ProviderIcon({ provider }: { provider: string }) {
 	switch (provider) {
 		case 'google':
-			return <SocialGoogle24 />;
+			return <SocialGoogle24 width={16} height={16} />;
 		case 'twitch':
-			return <SocialTwitch24 />;
+			return <SocialTwitch24 width={16} height={16} />;
 		default:
-			// default to Sui for now
 			return <SuiIcon />;
 	}
 }

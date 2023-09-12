@@ -6,6 +6,7 @@ import { useEffect, useMemo } from 'react';
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 
 import { useSuiLedgerClient } from './components/ledger/SuiLedgerClientProvider';
+import { RecoveryPassphrase } from './components/recovery-passphrase/RecoveryPassphrase';
 import { useAccounts } from './hooks/useAccounts';
 import { useBackgroundClient } from './hooks/useBackgroundClient';
 import { useInitialPageView } from './hooks/useInitialPageView';
@@ -175,6 +176,7 @@ const App = () => {
 			</Route>
 			<Route path="/account">
 				<Route path="forgot-password" element={<ForgotPasswordPage />} />
+				<Route path="recover-passphrase" element={<RecoveryPassphrase />} />
 			</Route>
 			<Route path="/dapp/*" element={<HomePage disableNavigation />}>
 				<Route path="connect/:requestID" element={<SiteConnectPage />} />

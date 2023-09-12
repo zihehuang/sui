@@ -8,6 +8,7 @@ import { formatAddress } from '@mysten/sui.js/utils';
 import cn from 'classnames';
 import { forwardRef, type ReactNode } from 'react';
 import { EditableAccountName } from './EditableAccountName';
+import { getAccountBackgroundByType } from '../../helpers/accounts';
 import { useAccounts } from '../../hooks/useAccounts';
 import { useCopyToClipboard } from '../../hooks/useCopyToClipboard';
 import { useExplorerLink } from '../../hooks/useExplorerLink';
@@ -66,7 +67,9 @@ export const AccountItem = forwardRef<HTMLDivElement, AccountItemProps>(
 					{ 'bg-white/80 shadow-card-soft cursor-auto': selected },
 					{ 'bg-hero/10 border-none hover:bg-white/40 shadow-none': disabled },
 					{ 'bg-white/80': isActiveAccount },
-					{ 'bg-gradients-graph-cards': background === 'gradient' },
+					{
+						[getAccountBackgroundByType(account)]: background === 'gradient',
+					},
 				)}
 				{...props}
 			>
