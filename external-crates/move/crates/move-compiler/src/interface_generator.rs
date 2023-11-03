@@ -8,8 +8,8 @@ use move_binary_format::{
     access::ModuleAccess,
     file_format::{
         Ability, AbilitySet, CompiledModule, DatatypeHandleIndex, DatatypeTyParameter,
-        FunctionDefinition, ModuleHandle, SignatureToken, StructDefinition, StructFieldInformation,
-        TypeParameterIndex, Visibility,
+        EnumDefinition, FunctionDefinition, ModuleHandle, SignatureToken, StructDefinition,
+        StructFieldInformation, TypeParameterIndex, Visibility,
     },
 };
 use move_core_types::language_storage::ModuleId;
@@ -74,6 +74,13 @@ pub fn write_module_to_string(
         members.push(write_struct_def(&mut context, sdef));
     }
     if !module.struct_defs().is_empty() {
+        members.push("".to_string());
+    }
+
+    for edef in module.enum_defs() {
+        members.push(write_enum_def(&mut context, edef));
+    }
+    if !module.enum_defs().is_empty() {
         members.push("".to_string());
     }
 
@@ -190,7 +197,7 @@ fn write_struct_def(ctx: &mut Context, sdef: &StructDefinition) -> String {
         format!(
             "    struct {}{}{} {{",
             ctx.module.identifier_at(shandle.name),
-            write_struct_type_parameters(&shandle.type_parameters),
+            write_datatype_type_parameters(&shandle.type_parameters),
             write_ability_modifiers(shandle.abilities),
         )
     );
@@ -213,6 +220,46 @@ fn write_struct_def(ctx: &mut Context, sdef: &StructDefinition) -> String {
         )
     }
 
+    push!(out, "    }");
+    out
+}
+
+fn write_enum_def(ctx: &mut Context, edef: &EnumDefinition) -> String {
+    let mut out = String::new();
+
+    let shandle = ctx.module.datatype_handle_at(edef.enum_handle);
+
+    push_line!(
+        out,
+        format!(
+            "    enum {}{}{} {{",
+            ctx.module.identifier_at(shandle.name),
+            write_datatype_type_parameters(&shandle.type_parameters),
+            write_ability_modifiers(shandle.abilities),
+        )
+    );
+
+    for variant in &edef.variants {
+        push_line!(
+            out,
+            format!(
+                "        {} {{",
+                ctx.module.identifier_at(variant.variant_name),
+            )
+        );
+
+        for field in &variant.fields {
+            push_line!(
+                out,
+                format!(
+                    "            {}: {},",
+                    ctx.module.identifier_at(field.name),
+                    write_signature_token(ctx, &field.signature.0),
+                )
+            )
+        }
+    }
+    push!(out, "        }");
     push!(out, "    }");
     out
 }
@@ -278,7 +325,7 @@ fn write_ability(ab: Ability) -> String {
     .to_string()
 }
 
-fn write_struct_type_parameters(tps: &[DatatypeTyParameter]) -> String {
+fn write_datatype_type_parameters(tps: &[DatatypeTyParameter]) -> String {
     if tps.is_empty() {
         return "".to_string();
     }

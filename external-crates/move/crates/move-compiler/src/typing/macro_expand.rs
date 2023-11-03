@@ -325,6 +325,10 @@ mod recolor_struct {
             }
         }
 
+        pub fn add_var(&mut self, var: &Var) {
+            self.vars.insert(*var);
+        }
+
         pub fn add_block_label(&mut self, label: BlockLabel) {
             self.block_labels.insert(label);
         }
@@ -495,6 +499,12 @@ fn recolor_exp(ctx: &mut Recolor, sp!(_, e_): &mut N::Exp) {
             recolor_exp(ctx, et);
             recolor_exp(ctx, ef);
         }
+        N::Exp_::Match(subject, arms) => {
+            recolor_exp(ctx, subject);
+            for arm in arms.value.iter_mut() {
+                recolor_match_arm(ctx, arm);
+            }
+        }
         N::Exp_::Loop(name, e) => {
             ctx.add_block_label(*name);
             recolor_block_label(ctx, name);
@@ -526,6 +536,11 @@ fn recolor_exp(ctx: &mut Recolor, sp!(_, e_): &mut N::Exp) {
             recolor_exp(ctx, er)
         }
         N::Exp_::Pack(_, _, _, fields) => {
+            for (_, _, (_, e)) in fields {
+                recolor_exp(ctx, e)
+            }
+        }
+        N::Exp_::PackVariant(_, _, _, _, fields) => {
             for (_, _, (_, e)) in fields {
                 recolor_exp(ctx, e)
             }
@@ -577,6 +592,50 @@ fn recolor_exp_dotted(ctx: &mut Recolor, sp!(_, ed_): &mut N::ExpDotted) {
     match ed_ {
         N::ExpDotted_::Exp(e) => recolor_exp(ctx, e),
         N::ExpDotted_::Dot(ed, _) => recolor_exp_dotted(ctx, ed),
+    }
+}
+
+fn recolor_match_arm(ctx: &mut Recolor, sp!(_, arm): &mut N::MatchArm) {
+    let N::MatchArm_ {
+        pattern,
+        binders,
+        guard,
+        guard_binders,
+        rhs_binders: _,
+        rhs,
+    } = arm;
+    for (_mut, var) in binders {
+        ctx.add_var(var)
+    }
+    for (_, _, var) in guard_binders {
+        ctx.add_var(var);
+    }
+    recolor_match_pattern(ctx, pattern);
+    if let Some(guard) = guard.as_mut() {
+        recolor_exp(ctx, &mut *guard);
+    }
+    recolor_exp(ctx, rhs);
+}
+
+fn recolor_match_pattern(ctx: &mut Recolor, sp!(_, pat): &mut N::MatchPattern) {
+    match pat {
+        N::MatchPattern_::Constructor(_, _, _, _, fields) => {
+            for (_, _, (_, pat)) in fields {
+                recolor_match_pattern(ctx, pat);
+            }
+        }
+        N::MatchPattern_::Binder(x) => recolor_var(ctx, x),
+        N::MatchPattern_::Literal(_) => (),
+        N::MatchPattern_::Wildcard => (),
+        N::MatchPattern_::Or(lhs, rhs) => {
+            recolor_match_pattern(ctx, lhs);
+            recolor_match_pattern(ctx, rhs);
+        }
+        N::MatchPattern_::At(x, inner) => {
+            recolor_var(ctx, x);
+            recolor_match_pattern(ctx, inner);
+        }
+        N::MatchPattern_::ErrorPat => (),
     }
 }
 
@@ -697,6 +756,12 @@ fn exp(context: &mut Context, sp!(eloc, e_): &mut N::Exp) {
             exp(context, et);
             exp(context, ef);
         }
+        N::Exp_::Match(subject, arms) => {
+            exp(context, subject);
+            for arm in arms.value.iter_mut() {
+                match_arm(context, arm);
+            }
+        }
         N::Exp_::While(_name, econd, ebody) => {
             exp(context, econd);
             exp(context, ebody)
@@ -715,6 +780,14 @@ fn exp(context: &mut Context, sp!(eloc, e_): &mut N::Exp) {
             exp(context, er)
         }
         N::Exp_::Pack(_, _, tys_opt, fields) => {
+            if let Some(tys) = tys_opt {
+                types(context, tys)
+            }
+            for (_, _, (_, e)) in fields {
+                exp(context, e)
+            }
+        }
+        N::Exp_::PackVariant(_, _, _, tys_opt, fields) => {
             if let Some(tys) = tys_opt {
                 types(context, tys)
             }
@@ -945,6 +1018,64 @@ fn exp_dotted(context: &mut Context, sp!(_, ed_): &mut N::ExpDotted) {
     match ed_ {
         N::ExpDotted_::Exp(e) => exp(context, e),
         N::ExpDotted_::Dot(ed, _) => exp_dotted(context, ed),
+    }
+}
+
+fn match_arm(context: &mut Context, sp!(_, arm): &mut N::MatchArm) {
+    let N::MatchArm_ {
+        pattern,
+        binders: _,
+        guard,
+        guard_binders: _,
+        rhs_binders: _,
+        rhs,
+    } = arm;
+    match_pattern(context, pattern);
+    if let Some(guard) = guard.as_mut() {
+        exp(context, guard);
+    }
+    exp(context, rhs)
+}
+
+fn match_pattern(context: &mut Context, sp!(_, pattern): &mut N::MatchPattern) {
+    fn ident_okay(context: &mut Context, sp!(_, v_): &Var) -> bool {
+        if context.all_params.contains_key(v_) {
+            assert!(
+                context.core.env.has_errors(),
+                "ICE cannot assign to macro parameter"
+            );
+            true
+        } else {
+            false
+        }
+    }
+    match pattern {
+        N::MatchPattern_::Constructor(_, _, _, tys_opt, fields) => {
+            if let Some(tys) = tys_opt {
+                types(context, tys)
+            }
+            for (_, _, (_, e)) in fields {
+                match_pattern(context, e)
+            }
+        }
+        N::MatchPattern_::Binder(x) => {
+            if !ident_okay(context, x) {
+                *pattern = N::MatchPattern_::ErrorPat;
+            }
+        }
+        N::MatchPattern_::Literal(_) => (),
+        N::MatchPattern_::Wildcard => (),
+        N::MatchPattern_::Or(lhs, rhs) => {
+            match_pattern(context, lhs);
+            match_pattern(context, rhs);
+        }
+        N::MatchPattern_::At(x, inner) => {
+            match_pattern(context, inner);
+            if !ident_okay(context, x) {
+                *pattern = N::MatchPattern_::ErrorPat;
+            }
+        }
+        N::MatchPattern_::ErrorPat => (),
     }
 }
 
