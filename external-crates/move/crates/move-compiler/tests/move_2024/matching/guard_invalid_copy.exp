@@ -1,0 +1,22 @@
+error[E04007]: incompatible types
+   ┌─ tests/move_2024/matching/guard_invalid_copy.move:17:33
+   │
+10 │     fun check_s(_s: S): bool {
+   │                     - Expected: '0x42::m::S'
+   ·
+17 │             Option::Some(n) if (check_s(n)) => n,
+   │                          -      ^^^^^^^^^^ Invalid call of '0x42::m::check_s'. Invalid argument for parameter '_s'
+   │                          │       
+   │                          Given: '&0x42::m::S'
+
+error[E04007]: incompatible types
+   ┌─ tests/move_2024/matching/guard_invalid_copy.move:26:33
+   │
+10 │     fun check_s(_s: S): bool {
+   │                     - Expected: '0x42::m::S'
+   ·
+26 │             Option::Some(n) if (check_s(copy n)) => n,
+   │                          -      ^^^^^^^^^^^^^^^ Invalid call of '0x42::m::check_s'. Invalid argument for parameter '_s'
+   │                          │       
+   │                          Given: '&0x42::m::S'
+

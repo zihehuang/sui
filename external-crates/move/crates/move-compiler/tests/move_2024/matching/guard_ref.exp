@@ -1,0 +1,22 @@
+error[E04006]: invalid subtype
+   ┌─ tests/move_2024/matching/guard_ref.move:28:33
+   │
+22 │     fun check_mut_ref_s(_s: &mut S): bool {
+   │                             ------ Expected: '&mut 0x42::m::S'
+   ·
+28 │             Option::Some(n) if (check_mut_ref_s(n)) => n,
+   │                          -      ^^^^^^^^^^^^^^^^^^ Invalid call of '0x42::m::check_mut_ref_s'. Invalid argument for parameter '_s'
+   │                          │       
+   │                          Given: '&0x42::m::S'
+
+error[E04006]: invalid subtype
+   ┌─ tests/move_2024/matching/guard_ref.move:36:33
+   │
+22 │     fun check_mut_ref_s(_s: &mut S): bool {
+   │                             ------ Expected: '&mut 0x42::m::S'
+   ·
+36 │             Option::Some(n) if (check_mut_ref_s(n)) => n,
+   │                          -      ^^^^^^^^^^^^^^^^^^ Invalid call of '0x42::m::check_mut_ref_s'. Invalid argument for parameter '_s'
+   │                          │       
+   │                          Given: '&0x42::m::S'
+
