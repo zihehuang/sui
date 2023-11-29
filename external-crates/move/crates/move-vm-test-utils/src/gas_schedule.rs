@@ -12,7 +12,8 @@ use move_binary_format::{
     file_format::{
         Bytecode, ConstantPoolIndex, FieldHandleIndex, FieldInstantiationIndex,
         FunctionHandleIndex, FunctionInstantiationIndex, SignatureIndex,
-        StructDefInstantiationIndex, StructDefinitionIndex,
+        StructDefInstantiationIndex, StructDefinitionIndex, VariantHandleIndex,
+        VariantInstantiationHandleIndex, VariantJumpTableIndex,
     },
     file_format_common::{instruction_key, Opcodes},
 };
@@ -505,12 +506,18 @@ pub fn zero_cost_instruction_table() -> Vec<(Bytecode, GasCost)> {
     use Bytecode::*;
 
     vec![
-        (MoveToDeprecated(StructDefinitionIndex::new(0)), GasCost::new(0, 0)),
+        (
+            MoveToDeprecated(StructDefinitionIndex::new(0)),
+            GasCost::new(0, 0),
+        ),
         (
             MoveToGenericDeprecated(StructDefInstantiationIndex::new(0)),
             GasCost::new(0, 0),
         ),
-        (MoveFromDeprecated(StructDefinitionIndex::new(0)), GasCost::new(0, 0)),
+        (
+            MoveFromDeprecated(StructDefinitionIndex::new(0)),
+            GasCost::new(0, 0),
+        ),
         (
             MoveFromGenericDeprecated(StructDefInstantiationIndex::new(0)),
             GasCost::new(0, 0),
@@ -572,7 +579,10 @@ pub fn zero_cost_instruction_table() -> Vec<(Bytecode, GasCost)> {
         (LdTrue, GasCost::new(0, 0)),
         (Mod, GasCost::new(0, 0)),
         (BrFalse(0), GasCost::new(0, 0)),
-        (ExistsDeprecated(StructDefinitionIndex::new(0)), GasCost::new(0, 0)),
+        (
+            ExistsDeprecated(StructDefinitionIndex::new(0)),
+            GasCost::new(0, 0),
+        ),
         (
             ExistsGenericDeprecated(StructDefInstantiationIndex::new(0)),
             GasCost::new(0, 0),
@@ -618,6 +628,39 @@ pub fn zero_cost_instruction_table() -> Vec<(Bytecode, GasCost)> {
         (CastU16, GasCost::new(0, 0)),
         (CastU32, GasCost::new(0, 0)),
         (CastU256, GasCost::new(0, 0)),
+        (PackVariant(VariantHandleIndex::new(0)), GasCost::new(0, 0)),
+        (
+            PackVariantGeneric(VariantInstantiationHandleIndex::new(0)),
+            GasCost::new(0, 0),
+        ),
+        (
+            UnpackVariant(VariantHandleIndex::new(0)),
+            GasCost::new(0, 0),
+        ),
+        (
+            UnpackVariantImmRef(VariantHandleIndex::new(0)),
+            GasCost::new(0, 0),
+        ),
+        (
+            UnpackVariantMutRef(VariantHandleIndex::new(0)),
+            GasCost::new(0, 0),
+        ),
+        (
+            UnpackVariantGeneric(VariantInstantiationHandleIndex::new(0)),
+            GasCost::new(0, 0),
+        ),
+        (
+            UnpackVariantGenericImmRef(VariantInstantiationHandleIndex::new(0)),
+            GasCost::new(0, 0),
+        ),
+        (
+            UnpackVariantGenericMutRef(VariantInstantiationHandleIndex::new(0)),
+            GasCost::new(0, 0),
+        ),
+        (
+            VariantSwitch(VariantJumpTableIndex::new(0)),
+            GasCost::new(0, 0),
+        ),
     ]
 }
 
@@ -644,7 +687,10 @@ pub fn unit_cost_schedule() -> CostTable {
 pub fn bytecode_instruction_costs() -> Vec<(Bytecode, GasCost)> {
     use Bytecode::*;
     vec![
-        (MoveToDeprecated(StructDefinitionIndex::new(0)), GasCost::new(13, 1)),
+        (
+            MoveToDeprecated(StructDefinitionIndex::new(0)),
+            GasCost::new(13, 1),
+        ),
         (
             MoveToGenericDeprecated(StructDefInstantiationIndex::new(0)),
             GasCost::new(27, 1),
@@ -714,7 +760,10 @@ pub fn bytecode_instruction_costs() -> Vec<(Bytecode, GasCost)> {
         (LdTrue, GasCost::new(1, 1)),
         (Mod, GasCost::new(1, 1)),
         (BrFalse(0), GasCost::new(1, 1)),
-        (ExistsDeprecated(StructDefinitionIndex::new(0)), GasCost::new(41, 1)),
+        (
+            ExistsDeprecated(StructDefinitionIndex::new(0)),
+            GasCost::new(41, 1),
+        ),
         (
             ExistsGenericDeprecated(StructDefInstantiationIndex::new(0)),
             GasCost::new(34, 1),
@@ -760,6 +809,39 @@ pub fn bytecode_instruction_costs() -> Vec<(Bytecode, GasCost)> {
         (CastU16, GasCost::new(2, 1)),
         (CastU32, GasCost::new(2, 1)),
         (CastU256, GasCost::new(2, 1)),
+        (PackVariant(VariantHandleIndex::new(0)), GasCost::new(2, 1)),
+        (
+            PackVariantGeneric(VariantInstantiationHandleIndex::new(0)),
+            GasCost::new(2, 1),
+        ),
+        (
+            UnpackVariant(VariantHandleIndex::new(0)),
+            GasCost::new(2, 1),
+        ),
+        (
+            UnpackVariantImmRef(VariantHandleIndex::new(0)),
+            GasCost::new(2, 1),
+        ),
+        (
+            UnpackVariantMutRef(VariantHandleIndex::new(0)),
+            GasCost::new(2, 1),
+        ),
+        (
+            UnpackVariantGeneric(VariantInstantiationHandleIndex::new(0)),
+            GasCost::new(2, 1),
+        ),
+        (
+            UnpackVariantGenericImmRef(VariantInstantiationHandleIndex::new(0)),
+            GasCost::new(2, 1),
+        ),
+        (
+            UnpackVariantGenericMutRef(VariantInstantiationHandleIndex::new(0)),
+            GasCost::new(2, 1),
+        ),
+        (
+            VariantSwitch(VariantJumpTableIndex::new(0)),
+            GasCost::new(2, 1),
+        ),
     ]
 }
 
