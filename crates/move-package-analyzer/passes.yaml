@@ -1,0 +1,7 @@
+output_dir: <add your output dir here>
+passes:
+  - Noop
+  - Summary
+  - DumpEnv
+  - CsvEntities
+  - Versions
