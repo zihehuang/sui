@@ -461,6 +461,8 @@ pub enum SuiError {
         authority: AuthorityName,
         reason: String,
     },
+    #[error("Network has temporarily halted new transaction execution with reason: {reason:?}")]
+    ExecutionHalted { reason: String },
     #[error("Storage error")]
     StorageError(#[from] TypedStoreError),
     #[error("Non-RocksDB Storage error: {0}")]
@@ -720,8 +722,9 @@ impl SuiError {
     /// non-retryable error below to help us find more retryable errors in logs.
     pub fn is_retryable(&self) -> (bool, bool) {
         match self {
-            // Network error
+            // Network errors
             SuiError::RpcError { .. } => (true, true),
+            SuiError::ExecutionHalted { .. } => (true, true),
 
             // Reconfig error
             SuiError::ValidatorHaltedAtEpochEnd => (true, true),

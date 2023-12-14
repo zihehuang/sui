@@ -33,10 +33,11 @@ use sui_types::{
 };
 use tap::TapFallible;
 use tokio::task::JoinHandle;
-use tracing::{error_span, info, Instrument};
+use tracing::{error_span, info, warn, Instrument};
 
 use crate::consensus_adapter::{ConnectionMonitorStatusForTests, LazyNarwhalClient};
 use crate::{
+    authority::authority_store_types::ExecutionState,
     authority::AuthorityState,
     consensus_adapter::{ConsensusAdapter, ConsensusAdapterMetrics},
 };
@@ -359,6 +360,8 @@ impl ValidatorService {
             metrics,
         } = self;
 
+        // Check execution state to ensure validator is not set
+        // to reject all transactions.
         let epoch_store = state.load_epoch_store_one_call_per_task();
         let certificate = request.into_inner();
 
@@ -378,6 +381,21 @@ impl ValidatorService {
         certificate
             .data()
             .validity_check(epoch_store.protocol_config())?;
+
+        match state.get_execution_state().await {
+            ExecutionState::Live => {}
+            exec_state => {
+                warn!(
+                    "Rejecting tx cert with digest {:?} due to execution state: {:?}",
+                    certificate.digest(),
+                    exec_state
+                );
+                let err = SuiError::ExecutionHalted {
+                    reason: exec_state.to_string(),
+                };
+                return Err(err.into());
+            }
+        }
 
         let shared_object_tx = certificate.contains_shared_object();
 

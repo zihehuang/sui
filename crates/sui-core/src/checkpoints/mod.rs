@@ -28,6 +28,7 @@ use sui_network::default_mysten_network_config;
 use sui_types::base_types::ConciseableName;
 
 use crate::authority::authority_per_epoch_store::AuthorityPerEpochStore;
+use crate::authority::authority_store_types::ExecutionState;
 use crate::consensus_handler::SequencedConsensusTransactionKey;
 use chrono::Utc;
 use rand::rngs::OsRng;
@@ -1461,10 +1462,11 @@ impl CheckpointSignatureAggregator {
             "Checking for split brain condition"
         );
         if self.signatures_by_digest.quorum_unreachable() {
-            // TODO: at this point we should immediately halt processing
-            // of new transaction certificates to avoid building on top of
-            // forked output
-            // self.halt_all_execution();
+            // At this point we should immediately halt processing
+            // of new transaction certificates to avoid building on
+            // top of forked output
+            let state_clone = self.state.clone();
+            spawn_monitored_task!(halt_all_execution(state_clone));
 
             let digests_by_stake_messages = self
                 .signatures_by_digest
@@ -1493,6 +1495,13 @@ impl CheckpointSignatureAggregator {
             });
         }
     }
+}
+
+async fn halt_all_execution(state: Arc<AuthorityState>) {
+    state
+        .halt_all_execution_UNSAFE(ExecutionState::NetworkForked)
+        .await
+        .expect("Failed to halt all execution");
 }
 
 /// Create data dump containing relevant data for diagnosing cause of the
@@ -1676,11 +1685,6 @@ async fn diagnose_split_brain(
     debug!("{}", fork_logs_text);
 
     fail_point!("split_brain_reached");
-
-    // There is no option to never restart the node, so choosing longer than should
-    // be needed for any testcase
-    // #[cfg(msim)]
-    // sui_simulator::task::kill_current_node(Some(Duration::from_secs(100)));
 }
 
 pub trait CheckpointServiceNotify {
