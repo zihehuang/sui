@@ -64,6 +64,7 @@ derive_more.workspace = true
 proptest.workspace = true
 proptest-derive.workspace = true
 workspace-hack.workspace = true
+better_any.workspace = true
 
 [dev-dependencies]
 bincode.workspace = true

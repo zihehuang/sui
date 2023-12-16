@@ -177,4 +177,17 @@ module sui::transfer {
         aborts_if [abstract] true;
         // TODO: specify actual function behavior
     }
+
+    #[test_only]
+    public(friend) fun make_receiver<T: key>(id: ID, version: u64): Receiving<T> {
+        Receiving {
+            id,
+            version,
+        }
+    }
+
+    #[test_only]
+    public(friend) fun receiving_id<T: key>(r: &Receiving<T>): ID {
+        r.id
+    }
 }
