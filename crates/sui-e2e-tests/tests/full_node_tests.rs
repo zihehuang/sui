@@ -849,10 +849,13 @@ async fn test_full_node_transaction_orchestrator_basic() -> Result<(), anyhow::E
     let txn = txns.swap_remove(0);
     let digest = *txn.digest();
     let res = transaction_orchestrator
-        .execute_transaction_block(ExecuteTransactionRequest {
-            transaction: txn,
-            request_type: ExecuteTransactionRequestType::WaitForLocalExecution,
-        })
+        .execute_transaction_block(
+            ExecuteTransactionRequest {
+                transaction: txn,
+                request_type: ExecuteTransactionRequestType::WaitForLocalExecution,
+            },
+            None,
+        )
         .await
         .unwrap_or_else(|e| panic!("Failed to execute transaction {:?}: {:?}", digest, e));
 
@@ -877,10 +880,13 @@ async fn test_full_node_transaction_orchestrator_basic() -> Result<(), anyhow::E
     let txn = txns.swap_remove(0);
     let digest = *txn.digest();
     let res = transaction_orchestrator
-        .execute_transaction_block(ExecuteTransactionRequest {
-            transaction: txn,
-            request_type: ExecuteTransactionRequestType::WaitForEffectsCert,
-        })
+        .execute_transaction_block(
+            ExecuteTransactionRequest {
+                transaction: txn,
+                request_type: ExecuteTransactionRequestType::WaitForEffectsCert,
+            },
+            None,
+        )
         .await
         .unwrap_or_else(|e| panic!("Failed to execute transaction {:?}: {:?}", digest, e));
 
@@ -1278,10 +1284,13 @@ async fn test_pass_back_no_object() -> Result<(), anyhow::Error> {
 
     let digest = *tx.digest();
     let _res = transaction_orchestrator
-        .execute_transaction_block(ExecuteTransactionRequest {
-            transaction: tx,
-            request_type: ExecuteTransactionRequestType::WaitForLocalExecution,
-        })
+        .execute_transaction_block(
+            ExecuteTransactionRequest {
+                transaction: tx,
+                request_type: ExecuteTransactionRequestType::WaitForLocalExecution,
+            },
+            None,
+        )
         .await
         .unwrap_or_else(|e| panic!("Failed to execute transaction {:?}: {:?}", digest, e));
     println!("res: {:?}", _res);

@@ -12193,6 +12193,7 @@ dependencies = [
  "sui-keys",
  "sui-macros",
  "sui-move-build",
+ "sui-network",
  "sui-node",
  "sui-protocol-config",
  "sui-sdk",

@@ -1100,7 +1100,7 @@ impl ToolCommand {
                 let (agg, _) = AuthorityAggregatorBuilder::from_genesis(&genesis)
                     .build()
                     .unwrap();
-                let result = agg.process_transaction(transaction).await;
+                let result = agg.process_transaction(transaction, None).await;
                 println!("{:?}", result);
             }
         };

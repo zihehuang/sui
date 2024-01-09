@@ -1,9 +1,12 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+use std::net::SocketAddr;
+
 use sui_core::authority_client::AuthorityAPI;
 use sui_json_rpc_types::SuiTransactionBlockEffectsAPI;
 use sui_macros::sim_test;
+use sui_network::tonic;
 use sui_test_transaction_builder::TestTransactionBuilder;
 use sui_types::{
     base_types::SuiAddress,
@@ -13,6 +16,13 @@ use sui_types::{
     utils::{keys, make_upgraded_multisig_tx},
 };
 use test_cluster::TestClusterBuilder;
+
+fn make_request_metadata() -> tonic::metadata::MetadataMap {
+    let client_addr = SocketAddr::new([127, 0, 0, 1].into(), 0);
+    let mut metadata = tonic::metadata::MetadataMap::new();
+    metadata.insert("x-forwarded-for", client_addr.to_string().parse().unwrap());
+    metadata
+}
 
 async fn do_upgraded_multisig_test() -> SuiResult {
     let test_cluster = TestClusterBuilder::new().build().await;
@@ -25,7 +35,7 @@ async fn do_upgraded_multisig_test() -> SuiResult {
         .next()
         .unwrap()
         .authority_client()
-        .handle_transaction(tx)
+        .handle_transaction(tx, Some(make_request_metadata()))
         .await
         .map(|_| ())
 }

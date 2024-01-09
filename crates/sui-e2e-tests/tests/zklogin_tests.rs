@@ -2,6 +2,9 @@
 // Copyright (c) Mysten Labs, Inc.
 // SPDX-License-Identifier: Apache-2.0
 
+use std::net::SocketAddr;
+
+use sui_network::tonic;
 use sui_test_transaction_builder::TestTransactionBuilder;
 use sui_types::base_types::SuiAddress;
 use sui_types::error::{SuiError, SuiResult};
@@ -15,6 +18,13 @@ use test_cluster::{TestCluster, TestClusterBuilder};
 use sui_core::authority_client::AuthorityAPI;
 use sui_macros::sim_test;
 
+fn make_request_metadata() -> tonic::metadata::MetadataMap {
+    let client_addr = SocketAddr::new([127, 0, 0, 1].into(), 0);
+    let mut metadata = tonic::metadata::MetadataMap::new();
+    metadata.insert("x-forwarded-for", client_addr.to_string().parse().unwrap());
+    metadata
+}
+
 async fn do_zklogin_test(address: SuiAddress, legacy: bool) -> SuiResult {
     let test_cluster = TestClusterBuilder::new().build().await;
     let (_, tx, _) = make_zklogin_tx(address, legacy);
@@ -26,7 +36,7 @@ async fn do_zklogin_test(address: SuiAddress, legacy: bool) -> SuiResult {
         .next()
         .unwrap()
         .authority_client()
-        .handle_transaction(tx)
+        .handle_transaction(tx, Some(make_request_metadata()))
         .await
         .map(|_| ())
 }

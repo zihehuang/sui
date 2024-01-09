@@ -13,6 +13,7 @@ use mysten_metrics::histogram::Histogram;
 use mysten_metrics::{monitored_future, spawn_monitored_task, GaugeGuard};
 use mysten_network::config::Config;
 use std::convert::AsRef;
+use std::net::SocketAddr;
 use sui_authority_aggregation::ReduceOutput;
 use sui_authority_aggregation::{quorum_map_then_reduce_with_timeout, AsyncResult};
 use sui_config::genesis::Genesis;
@@ -995,6 +996,7 @@ where
     pub async fn process_transaction(
         &self,
         transaction: Transaction,
+        client_addr: Option<SocketAddr>,
     ) -> Result<ProcessTransactionResult, AggregatorProcessTransactionError> {
         // Now broadcast the transaction to all authorities.
         let tx_digest = transaction.digest();
@@ -1033,7 +1035,7 @@ where
                     Box::pin(
                         async move {
                             let _guard = GaugeGuard::acquire(&self.metrics.inflight_transaction_requests);
-                            client.handle_transaction(transaction_ref.clone()).await
+                            client.handle_transaction(transaction_ref.clone(), client_addr).await
                         },
                     )
                 },
@@ -1418,6 +1420,7 @@ where
     pub async fn process_certificate(
         &self,
         certificate: CertifiedTransaction,
+        client_addr: Option<SocketAddr>,
     ) -> Result<
         (VerifiedCertifiedTransactionEffects, TransactionEvents),
         AggregatorProcessCertificateError,
@@ -1457,7 +1460,7 @@ where
                 Box::pin(async move {
                     let _guard = GaugeGuard::acquire(&metrics_clone.inflight_certificate_requests);
                     client
-                        .handle_certificate_v2(cert_ref)
+                        .handle_certificate_v2(cert_ref, client_addr)
                         .instrument(
                             tracing::trace_span!("handle_certificate", authority =? name.concise()),
                         )
@@ -1643,10 +1646,11 @@ where
     pub async fn execute_transaction_block(
         &self,
         transaction: &Transaction,
+        client_addr: Option<SocketAddr>,
     ) -> Result<VerifiedCertifiedTransactionEffects, anyhow::Error> {
         let tx_guard = GaugeGuard::acquire(&self.metrics.inflight_transactions);
         let result = self
-            .process_transaction(transaction.clone())
+            .process_transaction(transaction.clone(), client_addr)
             .instrument(tracing::debug_span!("process_tx"))
             .await?;
         let cert = match result {
@@ -1660,7 +1664,7 @@ where
 
         let _cert_guard = GaugeGuard::acquire(&self.metrics.inflight_certificates);
         let response = self
-            .process_certificate(cert.clone())
+            .process_certificate(cert.clone(), client_addr)
             .instrument(tracing::debug_span!("process_cert"))
             .await?;
 
