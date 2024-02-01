@@ -40,7 +40,6 @@ import { DeepBookContextProvider, useDeepBookContext } from '_shared/deepBook/co
 import { useTransactionSummary, useZodForm } from '@mysten/core';
 import { useSuiClientQuery } from '@mysten/dapp-kit';
 import { ArrowDown12, ArrowRight16 } from '@mysten/icons';
-import { type DryRunTransactionBlockResponse } from '@mysten/sui.js/client';
 import { SUI_TYPE_ARG } from '@mysten/sui.js/utils';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import BigNumber from 'bignumber.js';
@@ -53,6 +52,7 @@ import { z } from 'zod';
 import { AssetData } from './AssetData';
 import { GasFeeSection } from './GasFeeSection';
 import { ToAssetSection } from './ToAssetSection';
+import { useSwapMutation } from './useAfSwap';
 
 const MIN_INPUT = 0.1;
 
@@ -169,16 +169,13 @@ export function SwapPageContent() {
 					return z.NEVER;
 				}
 
-				const shiftedValue = isAsk ? baseCoinDecimals : quoteCoinDecimals;
-				const maxBalance = isAsk ? maxBaseBalance : maxQuoteBalance;
-
-				if (bigNumberValue.shiftedBy(shiftedValue).gt(BigInt(maxBalance).toString())) {
-					context.addIssue({
-						code: 'custom',
-						message: 'Not available in account',
-					});
-					return z.NEVER;
-				}
+				// if (bigNumberValue.shiftedBy(shiftedValue).gt(BigInt(maxBalance).toString())) {
+				// 	context.addIssue({
+				// 		code: 'custom',
+				// 		message: 'Not available in account',
+				// 	});
+				// 	return z.NEVER;
+				// }
 
 				return value;
 			}),
@@ -222,7 +219,7 @@ export function SwapPageContent() {
 		control,
 		handleSubmit,
 		reset,
-		formState: { isValid, isSubmitting, errors, isDirty },
+		formState: { isValid, errors, isDirty },
 	} = form;
 
 	useEffect(() => {
@@ -258,9 +255,9 @@ export function SwapPageContent() {
 	const {
 		error: estimateError,
 		data: dataFromEstimate,
-		isPending: dataFromEstimatePending,
+
 		isFetching: dataFromEstimateFetching,
-		isError: isDataFromEstimateError,
+
 		refetch: refetchEstimate,
 	} = useGetEstimate({
 		signer,
@@ -281,7 +278,7 @@ export function SwapPageContent() {
 	const recognizedPackagesList = useRecognizedPackages();
 
 	const txnSummary = useTransactionSummary({
-		transaction: dataFromEstimate?.dryRunResponse as DryRunTransactionBlockResponse,
+		transaction: dataFromEstimate?.dryRunResponse,
 		recognizedPackagesList,
 		currentAddress: activeAccountAddress,
 	});
@@ -365,8 +362,24 @@ export function SwapPageContent() {
 		},
 	});
 
-	const handleOnsubmit: SubmitHandler<FormValues> = (formData) => {
-		handleSwap(formData);
+	const swap = useSwapMutation();
+
+	const handleOnsubmit: SubmitHandler<FormValues> = async (formData) => {
+		await swap.mutate(
+			{
+				amount: formData.amount,
+				slippage: 0.1,
+				dryRun: false,
+			},
+			{
+				onSuccess: (tx) => {
+					const receiptUrl = `/receipt?txdigest=${encodeURIComponent(
+						tx?.digest!,
+					)}&from=transactions`;
+					return navigate(receiptUrl);
+				},
+			},
+		);
 	};
 
 	return (
@@ -402,7 +415,7 @@ export function SwapPageContent() {
 											errorString={errors.amount?.message}
 											actionText="Max"
 											actionType="button"
-											actionDisabled={isPayAll}
+											// actionDisabled={isPayAll}
 											prefix={isPayAll ? '~' : undefined}
 											info={
 												isValid &&
@@ -483,14 +496,15 @@ export function SwapPageContent() {
 								onClick={handleSubmit(handleOnsubmit)}
 								type="submit"
 								variant="primary"
-								loading={isSubmitting || isSwapLoading}
-								disabled={
-									!isValid ||
-									isSubmitting ||
-									dataFromEstimatePending ||
-									dataFromEstimateFetching ||
-									isDataFromEstimateError
-								}
+								loading={swap.isPending}
+								// loading={isSubmitting || isSwapLoading}
+								// disabled={
+								// 	!isValid ||
+								// 	isSubmitting ||
+								// 	dataFromEstimatePending ||
+								// 	dataFromEstimateFetching ||
+								// 	isDataFromEstimateError
+								// }
 								size="tall"
 								text={atcText}
 								after={<ArrowRight16 />}

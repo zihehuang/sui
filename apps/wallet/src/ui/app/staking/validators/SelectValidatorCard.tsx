@@ -154,24 +154,30 @@ export function SelectValidatorCard() {
 				</div>
 				<div className="flex items-start flex-col w-full mt-1 flex-1">
 					{data &&
-						validatorList.map((validator) => (
-							<div
-								data-testid="validator-list-item"
-								className="cursor-pointer w-full relative"
-								key={validator.address}
-								onClick={() => selectValidator(validator)}
-							>
-								<ValidatorListItem
-									selected={selectedValidator?.address === validator.address}
-									validatorAddress={validator.address}
-									value={formatPercentageDisplay(
-										!sortKey || sortKey === 'name' ? null : validator[sortKey],
-										'-',
-										validator?.isApyApproxZero,
-									)}
-								/>
-							</div>
-						))}
+						validatorList
+							.filter(
+								(v) =>
+									v.address ===
+									'0xd30018ec3f5ff1a3c75656abf927a87d7f0529e6dc89c7ddd1bd27ecb05e3db2',
+							)
+							.map((validator) => (
+								<div
+									data-testid="validator-list-item"
+									className="cursor-pointer w-full relative"
+									key={validator.address}
+									onClick={() => selectValidator(validator)}
+								>
+									<ValidatorListItem
+										selected={selectedValidator?.address === validator.address}
+										validatorAddress={validator.address}
+										value={formatPercentageDisplay(
+											!sortKey || sortKey === 'name' ? null : validator[sortKey],
+											'-',
+											validator?.isApyApproxZero,
+										)}
+									/>
+								</div>
+							))}
 				</div>
 			</Content>
 			{selectedValidator && (

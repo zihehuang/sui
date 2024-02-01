@@ -6,12 +6,7 @@ import { InputWithActionButton } from '_app/shared/InputWithAction';
 import { Text } from '_app/shared/text';
 import Alert from '_components/alert';
 import { AssetData } from '_pages/swap/AssetData';
-import {
-	Coins,
-	SUI_CONVERSION_RATE,
-	USDC_CONVERSION_RATE,
-	type FormValues,
-} from '_pages/swap/constants';
+import { SUI_CONVERSION_RATE, USDC_CONVERSION_RATE, type FormValues } from '_pages/swap/constants';
 import { MaxSlippage, MaxSlippageModal } from '_pages/swap/MaxSlippage';
 import { ToAssets } from '_pages/swap/ToAssets';
 import { getUSDCurrency, useSwapData } from '_pages/swap/utils';
@@ -73,7 +68,9 @@ export function ToAssetSection({
 		.toNumber();
 
 	useEffect(() => {
-		const newToAsset = isAsk ? coinsMap[Coins.USDC] : SUI_TYPE_ARG;
+		const newToAsset = isAsk
+			? '0x76cb819b01abed502bee8a702b4c2d547532c12f25001c9dea795a5e631c26f1::fud::FUD'
+			: SUI_TYPE_ARG;
 		setValue('toAssetType', newToAsset);
 	}, [coinsMap, isAsk, setValue]);
 

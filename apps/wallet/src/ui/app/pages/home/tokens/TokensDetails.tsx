@@ -483,7 +483,6 @@ function TokenDetails({ coinType }: TokenDetailsProps) {
 
 										<LargeButton
 											center
-											disabled={!isDefiWalletEnabled || !tokenBalance}
 											to={`/swap${
 												coinBalance?.coinType
 													? `?${new URLSearchParams({

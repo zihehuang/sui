@@ -35,6 +35,7 @@ import { getSignerOperationErrorMessage } from '../../helpers/errorMessages';
 import { useActiveAccount } from '../../hooks/useActiveAccount';
 import { useQredoTransaction } from '../../hooks/useQredoTransaction';
 import { useSigner } from '../../hooks/useSigner';
+import { useLiquidStaking } from '../../pages/swap/useAfSwap';
 import { QredoActionIgnoredByUser } from '../../QredoSigner';
 import { getDelegationDataByStakeId } from '../getDelegationByStakeId';
 import { getStakeSuiBySuiId } from '../getStakeSuiBySuiId';
@@ -195,33 +196,30 @@ function StakingCard() {
 		},
 	});
 
+	const { stake } = useLiquidStaking();
+
 	const onHandleSubmit = useCallback(
 		async ({ amount }: FormValues, { resetForm }: FormikHelpers<FormValues>) => {
 			if (coinType === null || validatorAddress === null) {
 				return;
 			}
 			try {
-				const bigIntAmount = parseAmount(amount, coinDecimals);
-				let response;
-				let txDigest;
-				if (unstake) {
-					// check for delegation data
-					if (!stakeData || !stakeSuiIdParams || stakeData.status === 'Pending') {
-						return;
-					}
-					response = await unStakeToken.mutateAsync({
-						stakedSuiId: stakeSuiIdParams,
-					});
-
-					txDigest = response.digest;
-				} else {
-					response = await stakeToken.mutateAsync({
-						amount: bigIntAmount,
-						tokenTypeArg: coinType,
-						validatorAddress: validatorAddress,
-					});
-					txDigest = response.digest;
-				}
+				await stake.mutate(
+					{
+						amount: amount,
+						validatorAddress: '0xd30018ec3f5ff1a3c75656abf927a87d7f0529e6dc89c7ddd1bd27ecb05e3db2',
+					},
+					{
+						onSuccess: (result) => {
+							navigate(
+								`/receipt?${new URLSearchParams({
+									txdigest: encodeURIComponent(result?.digest!),
+									from: 'tokens',
+								}).toString()}`,
+							);
+						},
+					},
+				);
 
 				// Invalidate the react query for system state and validator
 				Promise.all([
@@ -233,20 +231,6 @@ function StakingCard() {
 					}),
 				]);
 				resetForm();
-
-				navigate(
-					`/receipt?${new URLSearchParams({
-						txdigest: txDigest,
-						from: 'tokens',
-					}).toString()}`,
-					response?.transaction
-						? {
-								state: {
-									response,
-								},
-						  }
-						: undefined,
-				);
 			} catch (error) {
 				if (error instanceof QredoActionIgnoredByUser) {
 					navigate('/');

@@ -17,7 +17,10 @@ function ToAsset({ coinType, onClick }: { coinType: string; onClick: (coinType: 
 
 	const { data: coinBalance } = useSuiClientQuery(
 		'getBalance',
-		{ coinType: coinType, owner: accountAddress! },
+		{
+			coinType: '0x76cb819b01abed502bee8a702b4c2d547532c12f25001c9dea795a5e631c26f1::fud::FUD',
+			owner: accountAddress!,
+		},
 		{ enabled: !!accountAddress, refetchInterval, staleTime },
 	);
 
