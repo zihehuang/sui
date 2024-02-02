@@ -28,6 +28,7 @@ use sui_types::messages_checkpoint::{
 use sui_types::messages_grpc::HandleTransactionResponse;
 use sui_types::mock_checkpoint_builder::{MockCheckpointBuilder, ValidatorKeypairProvider};
 use sui_types::object::Object;
+use sui_types::traffic_control::PolicyConfig;
 use sui_types::transaction::{
     CertifiedTransaction, Transaction, TransactionDataAPI, VerifiedCertificate,
     VerifiedTransaction, DEFAULT_VALIDATOR_GAS_PRICE,
@@ -71,11 +72,18 @@ impl SingleValidator {
             ConsensusAdapterMetrics::new_test(),
             epoch_store.protocol_config().clone(),
         ));
-        let validator_service = Arc::new(ValidatorService::new(
-            validator,
-            consensus_adapter,
-            Arc::new(ValidatorServiceMetrics::new_for_tests()),
-        ));
+        let validator_service = Arc::new(
+            ValidatorService::new(
+                validator,
+                consensus_adapter,
+                Arc::new(ValidatorServiceMetrics::new_for_tests()),
+                // TODO: for validator benchmarking purposes, we should allow for this
+                // to be configurable and introduce traffic control benchmarks to test
+                // against different policies
+                PolicyConfig::default(),
+            )
+            .await,
+        );
         Self {
             validator_service,
             epoch_store,
@@ -222,7 +230,7 @@ impl SingleValidator {
 
     pub async fn sign_transaction(&self, transaction: Transaction) -> HandleTransactionResponse {
         self.validator_service
-            .handle_transaction_for_testing(transaction)
+            .handle_transaction_for_benchmarking(transaction)
             .await
     }
 
