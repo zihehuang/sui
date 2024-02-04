@@ -9,12 +9,13 @@ use crate::consensus_validator::SuiTxValidator;
 use crate::mysticeti_adapter::{LazyMysticetiClient, MysticetiClient};
 use arc_swap::ArcSwapOption;
 use async_trait::async_trait;
-use fastcrypto::traits::KeyPair;
+use fastcrypto::bls12381::min_sig::BLS12381PublicKey;
+use fastcrypto::traits::{KeyPair, ToFromBytes};
 use itertools::Itertools;
 use mysten_metrics::{RegistryID, RegistryService};
 use mysticeti_core::commit_observer::SimpleCommitObserver;
 use mysticeti_core::committee::{Authority, Committee};
-use mysticeti_core::config::{Identifier, Parameters, PrivateConfig};
+use mysticeti_core::config::{Identifier, Parameters, PrivateConfig, SynchronizerParameters};
 use mysticeti_core::types::AuthorityIndex;
 use mysticeti_core::validator::Validator;
 use mysticeti_core::{CommitConsumer, PublicKey, Signer, SimpleBlockHandler};
@@ -23,6 +24,7 @@ use prometheus::Registry;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 use sui_config::NodeConfig;
 use sui_types::base_types::AuthorityName;
 use sui_types::committee::EpochId;
@@ -124,8 +126,6 @@ impl ConsensusManagerTrait for MysticetiManager {
         let mut retries = 0;
 
         loop {
-            let private_key = self.network_keypair.copy().private();
-
             // TODO: that should be replaced by a metered channel. We can discuss if unbounded approach
             // is the one we want to go with.
             #[allow(clippy::disallowed_methods)]
@@ -143,7 +143,7 @@ impl ConsensusManagerTrait for MysticetiManager {
                 &parameters,
                 config.clone(),
                 registry.clone(),
-                Signer(Box::new(private_key.0.clone())),
+                Signer(Box::new(self.keypair.copy())),
                 consumer,
                 tx_validator.clone(),
             )
@@ -219,12 +219,16 @@ fn mysticeti_committee(committee: &narwhal_config::Committee) -> Arc<Committee> 
     let authorities = committee
         .authorities()
         .map(|authority| {
-            // TODO: using the  Ed25519 network key which is compatible with Mysticeti which also uses Ed25519. Should
-            // switch to using the authority's protocol key (BLS) instead.
-            Authority::new(authority.stake(), PublicKey(authority.network_key().0))
+            Authority::new(
+                authority.stake(),
+                PublicKey(
+                    BLS12381PublicKey::from_bytes(authority.protocol_key().as_bytes()).unwrap(),
+                ),
+                authority.hostname().to_string(),
+            )
         })
         .collect_vec();
-    Committee::new(authorities.clone())
+    Committee::new(authorities.clone(), committee.epoch())
 }
 
 fn mysticeti_parameters(committee: &narwhal_config::Committee) -> Parameters {
@@ -237,9 +241,9 @@ fn mysticeti_parameters(committee: &narwhal_config::Committee) -> Parameters {
             let network_address = addr.to_socket_addrs().unwrap().collect_vec().pop().unwrap();
 
             Identifier {
-                // TODO: using the  Ed25519 network key which is compatible with Mysticeti which also uses Ed25519. Should
-                // switch to using the authority's protocol key (BLS) instead.
-                public_key: PublicKey(authority.network_key().0),
+                public_key: PublicKey(
+                    BLS12381PublicKey::from_bytes(authority.protocol_key().as_bytes()).unwrap(),
+                ),
                 network_address,
                 metrics_address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0), // not relevant as it won't be used
             }
@@ -249,6 +253,14 @@ fn mysticeti_parameters(committee: &narwhal_config::Committee) -> Parameters {
     //TODO: for now fallback to default parameters - will read from properties
     Parameters {
         identifiers,
+        enable_pipelining: true,
+        leader_timeout: Duration::from_millis(250),
+        enable_cleanup: true,
+        synchronizer_parameters: SynchronizerParameters {
+            sample_precision: Duration::from_millis(300),
+            batch_size: 20,
+            ..Default::default()
+        },
         ..Default::default()
     }
 }

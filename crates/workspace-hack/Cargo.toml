@@ -107,8 +107,10 @@ aws-smithy-runtime-api = { version = "0.56", features = ["client"] }
 aws-smithy-types = { version = "0.56", default-features = false }
 aws-smithy-xml = { version = "0.56", default-features = false }
 aws-types = { version = "0.56", default-features = false }
-axum = { version = "0.6", features = ["headers", "http2", "ws"] }
-axum-core = { version = "0.3", default-features = false }
+axum-3b31131e45eafb45 = { package = "axum", version = "0.6", features = ["headers", "http2", "ws"] }
+axum-ca01ad9e24f5d932 = { package = "axum", version = "0.7" }
+axum-core-468e82937335b1c9 = { package = "axum-core", version = "0.3", default-features = false }
+axum-core-9fbad63c4bcf4a8f = { package = "axum-core", version = "0.4", default-features = false, features = ["tracing"] }
 axum-extra = { version = "0.4" }
 axum-server = { version = "0.5", default-features = false, features = ["tls-rustls"] }
 backoff = { version = "0.4", features = ["tokio"] }
@@ -351,7 +353,8 @@ group-5ef9efb8ec2df382 = { package = "group", version = "0.12", default-features
 guppy = { version = "0.15", default-features = false, features = ["rayon1", "summaries"] }
 guppy-summaries = { version = "0.7", default-features = false }
 guppy-workspace-hack = { version = "0.1", default-features = false }
-h2 = { version = "0.3", default-features = false }
+h2-468e82937335b1c9 = { package = "h2", version = "0.3", default-features = false }
+h2-9fbad63c4bcf4a8f = { package = "h2", version = "0.4", default-features = false }
 hakari = { version = "0.13", default-features = false, features = ["cli-support"] }
 half-dff4ba8e3ae991db = { package = "half", version = "1", default-features = false }
 half-f595c2ba2a3f28df = { package = "half", version = "2", default-features = false, features = ["num-traits"] }
@@ -369,16 +372,21 @@ hkdf = { version = "0.12", default-features = false, features = ["std"] }
 hmac-5ef9efb8ec2df382 = { package = "hmac", version = "0.12", default-features = false, features = ["reset", "std"] }
 hmac-a6292c17cd707f01 = { package = "hmac", version = "0.11", default-features = false }
 hmac-sha512 = { version = "0.1" }
-http = { version = "0.2", default-features = false }
-http-body = { version = "0.4", default-features = false }
+http-6f8ce4dd05d13bba = { package = "http", version = "0.2", default-features = false }
+http-body-9fbad63c4bcf4a8f = { package = "http-body", version = "0.4", default-features = false }
+http-body-dff4ba8e3ae991db = { package = "http-body", version = "1", default-features = false }
+http-body-util = { version = "0.1", default-features = false }
+http-dff4ba8e3ae991db = { package = "http", version = "1" }
 http-range-header = { version = "0.3", default-features = false }
 httparse = { version = "1" }
 httpdate = { version = "1", default-features = false }
 humantime = { version = "2", default-features = false }
-hyper = { version = "0.14", features = ["full"] }
+hyper-582f2526e08bb6a0 = { package = "hyper", version = "0.14", features = ["full"] }
+hyper-dff4ba8e3ae991db = { package = "hyper", version = "1", features = ["http1", "http2", "server"] }
 hyper-rustls-2b5c6dc72f624058 = { package = "hyper-rustls", version = "0.23", features = ["http2", "webpki-tokio"] }
 hyper-rustls-adf3d7031871b0af = { package = "hyper-rustls", version = "0.24", features = ["http2"] }
 hyper-timeout = { version = "0.4", default-features = false }
+hyper-util = { version = "0.1", features = ["server-auto", "tokio"] }
 idna = { version = "0.3", default-features = false }
 im = { version = "15", default-features = false }
 impl-codec-3b31131e45eafb45 = { package = "impl-codec", version = "0.6", default-features = false, features = ["std"] }
@@ -401,6 +409,7 @@ io-lifetimes = { version = "1" }
 iri-string = { version = "0.4" }
 is-terminal = { version = "0.4", default-features = false }
 itertools-93f6ce9d446188ac = { package = "itertools", version = "0.10" }
+itertools-a6292c17cd707f01 = { package = "itertools", version = "0.11" }
 itoa = { version = "1", default-features = false }
 js-sys = { version = "0.3", default-features = false }
 json_to_table = { git = "https://github.com/zhiburt/tabled/", rev = "e449317a1c02eb6b29e409ad6617e5d9eb7b3bd4", default-features = false }
@@ -450,7 +459,7 @@ merlin = { version = "3" }
 migrations_internals = { version = "2", default-features = false }
 mime = { version = "0.3", default-features = false }
 mime_guess = { version = "2", default-features = false }
-minibytes = { git = "https://github.com/MystenLabs/mysticeti", rev = "318d61d27f47d257d99a86983d835e9e9756bc59", default-features = false, features = ["frommmap"] }
+minibytes = { git = "https://github.com/MystenLabs/mysticeti", rev = "ac7d1805a34bfa77fc17997337b2232e685ec446", default-features = false, features = ["frommmap"] }
 minimal-lexical = { version = "0.2", default-features = false, features = ["std"] }
 miniz_oxide-3b31131e45eafb45 = { package = "miniz_oxide", version = "0.6", default-features = false }
 miniz_oxide-ca01ad9e24f5d932 = { package = "miniz_oxide", version = "0.7", default-features = false, features = ["with-alloc"] }
@@ -496,7 +505,7 @@ multer = { version = "2" }
 multiaddr = { version = "0.17" }
 multibase = { version = "0.9" }
 multihash = { version = "0.17", default-features = false, features = ["identity", "multihash-impl", "std"] }
-mysticeti-core = { git = "https://github.com/MystenLabs/mysticeti", rev = "318d61d27f47d257d99a86983d835e9e9756bc59", default-features = false }
+mysticeti-core = { git = "https://github.com/MystenLabs/mysticeti", rev = "ac7d1805a34bfa77fc17997337b2232e685ec446", default-features = false }
 named-lock = { version = "0.2", default-features = false }
 neptune = { version = "13" }
 nested = { version = "0.1", default-features = false }
@@ -714,7 +723,7 @@ smallvec = { version = "1", default-features = false }
 snap = { version = "1", default-features = false }
 snowflake-api = { version = "0.6", default-features = false }
 socket2-9fbad63c4bcf4a8f = { package = "socket2", version = "0.4", default-features = false, features = ["all"] }
-socket2-d8f496e17d97b5cb = { package = "socket2", version = "0.5", default-features = false }
+socket2-d8f496e17d97b5cb = { package = "socket2", version = "0.5", default-features = false, features = ["all"] }
 soketto = { version = "0.7", features = ["http"] }
 spin-274715c4dabd11b0 = { package = "spin", version = "0.9", default-features = false, features = ["spin_mutex"] }
 spin-d8f496e17d97b5cb = { package = "spin", version = "0.5", default-features = false }
@@ -951,8 +960,10 @@ aws-smithy-runtime-api = { version = "0.56", features = ["client"] }
 aws-smithy-types = { version = "0.56", default-features = false }
 aws-smithy-xml = { version = "0.56", default-features = false }
 aws-types = { version = "0.56", default-features = false }
-axum = { version = "0.6", features = ["headers", "http2", "ws"] }
-axum-core = { version = "0.3", default-features = false }
+axum-3b31131e45eafb45 = { package = "axum", version = "0.6", features = ["headers", "http2", "ws"] }
+axum-ca01ad9e24f5d932 = { package = "axum", version = "0.7" }
+axum-core-468e82937335b1c9 = { package = "axum-core", version = "0.3", default-features = false }
+axum-core-9fbad63c4bcf4a8f = { package = "axum-core", version = "0.4", default-features = false, features = ["tracing"] }
 axum-extra = { version = "0.4" }
 axum-server = { version = "0.5", default-features = false, features = ["tls-rustls"] }
 backoff = { version = "0.4", features = ["tokio"] }
@@ -1231,7 +1242,8 @@ group-5ef9efb8ec2df382 = { package = "group", version = "0.12", default-features
 guppy = { version = "0.15", default-features = false, features = ["rayon1", "summaries"] }
 guppy-summaries = { version = "0.7", default-features = false }
 guppy-workspace-hack = { version = "0.1", default-features = false }
-h2 = { version = "0.3", default-features = false }
+h2-468e82937335b1c9 = { package = "h2", version = "0.3", default-features = false }
+h2-9fbad63c4bcf4a8f = { package = "h2", version = "0.4", default-features = false }
 hakari = { version = "0.13", default-features = false, features = ["cli-support"] }
 half-dff4ba8e3ae991db = { package = "half", version = "1", default-features = false }
 half-f595c2ba2a3f28df = { package = "half", version = "2", default-features = false, features = ["num-traits"] }
@@ -1252,16 +1264,21 @@ hmac-5ef9efb8ec2df382 = { package = "hmac", version = "0.12", default-features =
 hmac-a6292c17cd707f01 = { package = "hmac", version = "0.11", default-features = false }
 hmac-sha512 = { version = "0.1" }
 home = { version = "0.5", default-features = false }
-http = { version = "0.2", default-features = false }
-http-body = { version = "0.4", default-features = false }
+http-6f8ce4dd05d13bba = { package = "http", version = "0.2", default-features = false }
+http-body-9fbad63c4bcf4a8f = { package = "http-body", version = "0.4", default-features = false }
+http-body-dff4ba8e3ae991db = { package = "http-body", version = "1", default-features = false }
+http-body-util = { version = "0.1", default-features = false }
+http-dff4ba8e3ae991db = { package = "http", version = "1" }
 http-range-header = { version = "0.3", default-features = false }
 httparse = { version = "1" }
 httpdate = { version = "1", default-features = false }
 humantime = { version = "2", default-features = false }
-hyper = { version = "0.14", features = ["full"] }
+hyper-582f2526e08bb6a0 = { package = "hyper", version = "0.14", features = ["full"] }
+hyper-dff4ba8e3ae991db = { package = "hyper", version = "1", features = ["http1", "http2", "server"] }
 hyper-rustls-2b5c6dc72f624058 = { package = "hyper-rustls", version = "0.23", features = ["http2", "webpki-tokio"] }
 hyper-rustls-adf3d7031871b0af = { package = "hyper-rustls", version = "0.24", features = ["http2"] }
 hyper-timeout = { version = "0.4", default-features = false }
+hyper-util = { version = "0.1", features = ["server-auto", "tokio"] }
 ident_case = { version = "1", default-features = false }
 idna = { version = "0.3", default-features = false }
 if_chain = { version = "1", default-features = false }
@@ -1288,7 +1305,7 @@ io-lifetimes = { version = "1" }
 iri-string = { version = "0.4" }
 is-terminal = { version = "0.4", default-features = false }
 itertools-93f6ce9d446188ac = { package = "itertools", version = "0.10" }
-itertools-a6292c17cd707f01 = { package = "itertools", version = "0.11", default-features = false, features = ["use_alloc"] }
+itertools-a6292c17cd707f01 = { package = "itertools", version = "0.11" }
 itoa = { version = "1", default-features = false }
 jobserver = { version = "0.1", default-features = false }
 js-sys = { version = "0.3", default-features = false }
@@ -1343,7 +1360,7 @@ migrations_internals = { version = "2", default-features = false }
 migrations_macros = { version = "2" }
 mime = { version = "0.3", default-features = false }
 mime_guess = { version = "2", default-features = false }
-minibytes = { git = "https://github.com/MystenLabs/mysticeti", rev = "318d61d27f47d257d99a86983d835e9e9756bc59", default-features = false, features = ["frommmap"] }
+minibytes = { git = "https://github.com/MystenLabs/mysticeti", rev = "ac7d1805a34bfa77fc17997337b2232e685ec446", default-features = false, features = ["frommmap"] }
 minimal-lexical = { version = "0.2", default-features = false, features = ["std"] }
 miniz_oxide-3b31131e45eafb45 = { package = "miniz_oxide", version = "0.6", default-features = false }
 miniz_oxide-ca01ad9e24f5d932 = { package = "miniz_oxide", version = "0.7", default-features = false, features = ["with-alloc"] }
@@ -1393,7 +1410,7 @@ multibase = { version = "0.9" }
 multihash = { version = "0.17", default-features = false, features = ["identity", "multihash-impl", "std"] }
 multihash-derive = { version = "0.8", default-features = false, features = ["std"] }
 multimap = { version = "0.8", default-features = false }
-mysticeti-core = { git = "https://github.com/MystenLabs/mysticeti", rev = "318d61d27f47d257d99a86983d835e9e9756bc59", default-features = false }
+mysticeti-core = { git = "https://github.com/MystenLabs/mysticeti", rev = "ac7d1805a34bfa77fc17997337b2232e685ec446", default-features = false }
 named-lock = { version = "0.2", default-features = false }
 neptune = { version = "13" }
 nested = { version = "0.1", default-features = false }
@@ -1658,7 +1675,7 @@ smallvec = { version = "1", default-features = false }
 snap = { version = "1", default-features = false }
 snowflake-api = { version = "0.6", default-features = false }
 socket2-9fbad63c4bcf4a8f = { package = "socket2", version = "0.4", default-features = false, features = ["all"] }
-socket2-d8f496e17d97b5cb = { package = "socket2", version = "0.5", default-features = false }
+socket2-d8f496e17d97b5cb = { package = "socket2", version = "0.5", default-features = false, features = ["all"] }
 soketto = { version = "0.7", features = ["http"] }
 spin-274715c4dabd11b0 = { package = "spin", version = "0.9", default-features = false, features = ["spin_mutex"] }
 spin-d8f496e17d97b5cb = { package = "spin", version = "0.5", default-features = false }
