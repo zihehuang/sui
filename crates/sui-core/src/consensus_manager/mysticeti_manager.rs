@@ -9,7 +9,8 @@ use crate::consensus_validator::SuiTxValidator;
 use crate::mysticeti_adapter::{LazyMysticetiClient, MysticetiClient};
 use arc_swap::ArcSwapOption;
 use async_trait::async_trait;
-use fastcrypto::traits::KeyPair;
+use fastcrypto::bls12381::min_sig::BLS12381PublicKey;
+use fastcrypto::traits::{KeyPair, ToFromBytes};
 use itertools::Itertools;
 use mysten_metrics::{RegistryID, RegistryService};
 use mysticeti_core::commit_observer::SimpleCommitObserver;
@@ -142,7 +143,7 @@ impl ConsensusManagerTrait for MysticetiManager {
                 &parameters,
                 config.clone(),
                 registry.clone(),
-                Signer(Box::new(self.network_keypair.copy())),
+                Signer(Box::new(self.keypair.copy())),
                 consumer,
                 tx_validator.clone(),
             )
@@ -220,7 +221,9 @@ fn mysticeti_committee(committee: &narwhal_config::Committee) -> Arc<Committee> 
         .map(|authority| {
             Authority::new(
                 authority.stake(),
-                PublicKey(authority.network_key()),
+                PublicKey(
+                    BLS12381PublicKey::from_bytes(authority.protocol_key().as_bytes()).unwrap(),
+                ),
                 authority.hostname().to_string(),
             )
         })
@@ -238,7 +241,9 @@ fn mysticeti_parameters(committee: &narwhal_config::Committee) -> Parameters {
             let network_address = addr.to_socket_addrs().unwrap().collect_vec().pop().unwrap();
 
             Identifier {
-                public_key: PublicKey(authority.network_key()),
+                public_key: PublicKey(
+                    BLS12381PublicKey::from_bytes(authority.protocol_key().as_bytes()).unwrap(),
+                ),
                 network_address,
                 metrics_address: SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0), // not relevant as it won't be used
             }
