@@ -801,7 +801,6 @@ fn error_format_impl_(b_: &Type_, subst: &Subst, nested: bool) -> String {
         ),
         AutoRef(_, ty) => format!("auto {}", error_format_nested(ty, subst)),
     };
-    if nested {};
     if nested {
         res
     } else {
