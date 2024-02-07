@@ -275,7 +275,7 @@ impl TryFrom<Object> for NameRecord {
 ///
 /// WARNING: This call will remove the object from the `domains` vector.
 /// This is done to avoid doing not necessary cloning of the vector.
-pub fn get_name_record_from_multi_get_vec(
+pub fn name_record_from_option_obj_vec(
     domains: &mut Vec<Option<Object>>,
     record_id: &ObjectID,
 ) -> Result<Option<NameRecord>, NameServiceError> {

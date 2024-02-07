@@ -9,7 +9,7 @@ use jsonrpsee::types::SubscriptionEmptyError;
 use jsonrpsee::types::SubscriptionResult;
 use jsonrpsee::{RpcModule, SubscriptionSink};
 use sui_json_rpc::name_service::{
-    get_name_record_from_multi_get_vec, Domain, NameServiceConfig, NameServiceError,
+    name_record_from_option_obj_vec, Domain, NameServiceConfig, NameServiceError,
 };
 use sui_json_rpc::SuiRpcModule;
 use sui_json_rpc_api::{cap_page_limit, IndexerApiServer};
@@ -320,7 +320,7 @@ impl IndexerApiServer for IndexerApiV2 {
             .map(|o| sui_types::object::Object::try_from(o).ok())
             .collect();
 
-        let name_record = match get_name_record_from_multi_get_vec(&mut domains, &record_id) {
+        let name_record = match name_record_from_option_obj_vec(&mut domains, &record_id) {
             Ok(Some(name_record)) => name_record,
             Ok(None) => return Ok(None),
             Err(e) => return Err(IndexerError::NameServiceError(e).into()),
@@ -336,7 +336,7 @@ impl IndexerApiServer for IndexerApiV2 {
         }
 
         let parent_name_record =
-            match get_name_record_from_multi_get_vec(&mut domains, &parent_record_id) {
+            match name_record_from_option_obj_vec(&mut domains, &parent_record_id) {
                 Ok(Some(name_record)) => name_record,
                 _ => {
                     return Err(
