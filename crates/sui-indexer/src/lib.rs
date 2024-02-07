@@ -9,6 +9,7 @@ use clap::Parser;
 use jsonrpsee::http_client::{HeaderMap, HeaderValue, HttpClient, HttpClientBuilder};
 use metrics::IndexerMetrics;
 use prometheus::Registry;
+use sui_types::base_types::{ObjectID, SuiAddress};
 use tokio::runtime::Handle;
 use tracing::warn;
 use url::Url;
@@ -76,6 +77,17 @@ pub struct IndexerConfig {
     pub rpc_server_worker: bool,
     #[clap(long)]
     pub analytical_worker: bool,
+    #[clap(long)]
+    pub name_service_package_address: Option<SuiAddress>,
+    #[clap(long)]
+    pub name_service_registry_id: Option<ObjectID>,
+    #[clap(long)]
+    pub name_service_reverse_registry_id: Option<ObjectID>,
+    // NOTE: experimental only, do not use in production.
+    #[clap(long)]
+    pub skip_db_commit: bool,
+    #[clap(long)]
+    pub use_v2: bool,
 }
 
 impl IndexerConfig {
@@ -125,6 +137,11 @@ impl Default for IndexerConfig {
             fullnode_sync_worker: true,
             rpc_server_worker: true,
             analytical_worker: false,
+            skip_db_commit: false,
+            use_v2: false,
+            name_service_package_address: None,
+            name_service_registry_id: None,
+            name_service_reverse_registry_id: None,
         }
     }
 }

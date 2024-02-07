@@ -8,7 +8,9 @@ use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::SubscriptionEmptyError;
 use jsonrpsee::types::SubscriptionResult;
 use jsonrpsee::{RpcModule, SubscriptionSink};
-use sui_json_rpc::name_service::{Domain, NameRecord, NameServiceConfig};
+use sui_json_rpc::name_service::{
+    get_name_record_from_multi_get_vec, Domain, NameServiceConfig, NameServiceError,
+};
 use sui_json_rpc::SuiRpcModule;
 use sui_json_rpc_api::{cap_page_limit, IndexerApiServer};
 use sui_json_rpc_types::{
@@ -31,11 +33,10 @@ pub(crate) struct IndexerApiV2 {
 }
 
 impl IndexerApiV2 {
-    pub fn new(inner: IndexerReader) -> Self {
+    pub fn new(inner: IndexerReader, name_service_config: NameServiceConfig) -> Self {
         Self {
             inner,
-            // TODO allow configuring for other networks
-            name_service_config: Default::default(),
+            name_service_config,
         }
     }
 
@@ -291,22 +292,66 @@ impl IndexerApiServer for IndexerApiV2 {
     }
 
     async fn resolve_name_service_address(&self, name: String) -> RpcResult<Option<SuiAddress>> {
-        // TODO(manos): Implement new logic.
-        let domain = name
-            .parse::<Domain>()
-            .map_err(IndexerError::NameServiceError)?;
+        let domain: Domain = name.parse().map_err(IndexerError::NameServiceError)?;
+        let parent_domain = domain.parent();
 
+        // construct the record ids to lookup.
         let record_id = self.name_service_config.record_field_id(&domain);
+        let parent_record_id = self.name_service_config.record_field_id(&parent_domain);
 
-        let field_record_object = match self.inner.get_object_in_blocking_task(record_id).await? {
-            Some(o) => o,
-            None => return Ok(None),
+        // get latest timestamp to check expiration.
+        let current_timestamp = self.inner.get_latest_checkpoint()?.timestamp_ms;
+
+        // gather the requests to fetch in the multi_get_objs.
+        let mut requests = vec![record_id];
+
+        // we only want to fetch both the child and the parent if the domain is a subdomain.
+        if domain.is_subdomain() {
+            requests.push(parent_record_id);
+        }
+
+        // fetch both parent (if subdomain) and child records in a single get query.
+        // We do this as we do not know if the subdomain is a node or leaf record.
+        let mut domains: Vec<_> = self
+            .inner
+            .multi_get_objects_in_blocking_task(requests)
+            .await?
+            .into_iter()
+            .map(|o| sui_types::object::Object::try_from(o).ok())
+            .collect();
+
+        let name_record = match get_name_record_from_multi_get_vec(&mut domains, &record_id) {
+            Ok(Some(name_record)) => name_record,
+            Ok(None) => return Ok(None),
+            Err(e) => return Err(IndexerError::NameServiceError(e).into()),
         };
 
-        let record = NameRecord::try_from(field_record_object)
-            .map_err(|e| IndexerError::PersistentStorageDataCorruptionError(e.to_string()))?;
+        // Handle NODE record case.
+        if !name_record.is_leaf_record() {
+            return if !name_record.is_node_expired(current_timestamp) {
+                Ok(name_record.target_address)
+            } else {
+                Err(IndexerError::NameServiceError(NameServiceError::NameExpired).into())
+            };
+        }
 
-        Ok(record.target_address)
+        let parent_name_record =
+            match get_name_record_from_multi_get_vec(&mut domains, &parent_record_id) {
+                Ok(Some(name_record)) => name_record,
+                _ => {
+                    return Err(
+                        IndexerError::NameServiceError(NameServiceError::NameExpired).into(),
+                    )
+                }
+            };
+
+        if parent_name_record.is_valid_leaf_parent(&name_record)
+            && !parent_name_record.is_node_expired(current_timestamp)
+        {
+            Ok(parent_name_record.target_address)
+        } else {
+            Err(IndexerError::NameServiceError(NameServiceError::NameExpired).into())
+        }
     }
 
     async fn resolve_name_service_names(
@@ -319,19 +364,18 @@ impl IndexerApiServer for IndexerApiV2 {
             .name_service_config
             .reverse_record_field_id(address.as_ref());
 
-        let field_reverse_record_object = match self
+        let mut result = Page {
+            data: vec![],
+            next_cursor: None,
+            has_next_page: false,
+        };
+
+        let Some(field_reverse_record_object) = self
             .inner
             .get_object_in_blocking_task(reverse_record_id)
             .await?
-        {
-            Some(o) => o,
-            None => {
-                return Ok(Page {
-                    data: vec![],
-                    next_cursor: None,
-                    has_next_page: false,
-                })
-            }
+        else {
+            return Ok(result);
         };
 
         let domain = field_reverse_record_object
@@ -343,11 +387,22 @@ impl IndexerApiServer for IndexerApiV2 {
             })?
             .value;
 
-        Ok(Page {
-            data: vec![domain.to_string()],
-            next_cursor: None,
-            has_next_page: false,
-        })
+        let domain_name = domain.to_string();
+
+        // Tries to resolve the name, to verify it is not expired.
+        let resolved_address = self
+            .resolve_name_service_address(domain_name.clone())
+            .await?;
+
+        // If we do not have a resolved address, we do not include the domain in the result.
+        if resolved_address.is_none() {
+            return Ok(result);
+        }
+
+        // We push the domain name to the result and return it.
+        result.data.push(domain_name);
+
+        Ok(result)
     }
 }
 

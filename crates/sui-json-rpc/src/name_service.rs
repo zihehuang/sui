@@ -270,6 +270,31 @@ impl TryFrom<Object> for NameRecord {
     }
 }
 
+/// Accepts a list of `Vec<Option<Object>>` as returned from a `multi_get_objects`,
+/// removes the requested record, and returns the `NameRecord`, if it can be constructed.
+///
+/// WARNING: This call will remove the object from the `domains` vector.
+/// This is done to avoid doing not necessary cloning of the vector.
+pub fn get_name_record_from_multi_get_vec(
+    domains: &mut Vec<Option<Object>>,
+    record_id: &ObjectID,
+) -> Result<Option<NameRecord>, NameServiceError> {
+    // Find the requested name and process it.
+    // Our vector has, at most, 2 elements so it's ok to look this up.
+    let Some(index) = domains
+        .iter()
+        .position(|o| o.as_ref().is_some_and(|x| &x.id() == record_id))
+    else {
+        return Ok(None);
+    };
+
+    // We can safely call `.remove().unwrap()` because we only return a valid position
+    // if the position exists + the object is valid.
+    let name_record = NameRecord::try_from(domains.remove(index).unwrap())?;
+
+    Ok(Some(name_record))
+}
+
 #[derive(thiserror::Error, Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
 pub enum NameServiceError {
     #[error("Name Service: String length: {0} exceeds maximum allowed length: {1}")]
