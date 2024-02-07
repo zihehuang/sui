@@ -227,6 +227,9 @@ pub struct TParam {
 #[derive(Debug, Hash, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
 pub struct TVar(u64);
 
+#[derive(Debug, Hash, Eq, PartialEq, Ord, PartialOrd, Copy, Clone)]
+pub struct RefVar(u64);
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum Type_ {
@@ -236,6 +239,7 @@ pub enum Type_ {
     Apply(Option<AbilitySet>, TypeName, Vec<Type>),
     Fun(Vec<Type>, Box<Type>),
     Var(TVar),
+    AutoRef(RefVar, Box<Type>),
     Anything,
     UnresolvedError,
 }
@@ -555,6 +559,12 @@ impl TVar {
     }
 }
 
+impl RefVar {
+    pub fn next() -> RefVar {
+        RefVar(Counter::next())
+    }
+}
+
 static BUILTIN_FUNCTION_ALL_NAMES: Lazy<BTreeSet<Symbol>> = Lazy::new(|| {
     [BuiltinFunction_::FREEZE, BuiltinFunction_::ASSERT_MACRO]
         .into_iter()
@@ -714,6 +724,7 @@ impl Type_ {
             Type_::Anything | Type_::UnresolvedError => Some(AbilitySet::all(loc)),
             Type_::Fun(_, _) => Some(AbilitySet::functions(loc)),
             Type_::Var(_) => None,
+            Type_::AutoRef(_, _) => None,
         }
     }
 
@@ -726,6 +737,7 @@ impl Type_ {
             Type_::Anything | Type_::UnresolvedError => Some(true),
             Type_::Fun(_, _) => Some(AbilitySet::FUNCTIONS.contains(&ability)),
             Type_::Var(_) => None,
+            Type_::AutoRef(_, _) => None,
         }
     }
 }
@@ -1214,6 +1226,10 @@ impl AstDebug for Type_ {
                 result.ast_debug(w);
             }
             Type_::Var(tv) => w.write(&format!("#{}", tv.0)),
+            Type_::AutoRef(rv, t) => {
+                w.write(&format!("<auto#{}> ", rv.0));
+                t.ast_debug(w);
+            }
             Type_::Anything => w.write("_"),
             Type_::UnresolvedError => w.write("_|_"),
         }

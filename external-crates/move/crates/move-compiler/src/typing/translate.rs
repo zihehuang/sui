@@ -736,7 +736,7 @@ fn visit_type_params(
         }
         // References cannot appear in structs, but we still report them as a non-phantom position
         // for full information.
-        Type_::Ref(_, ty) => {
+        Type_::Ref(_, ty) | Type_::AutoRef(_, ty) => {
             visit_type_params(context, ty, ParamPos::NonPhantom(NonPhantomPos::TypeArg), f)
         }
         Type_::Apply(_, n, ty_args) => match &n.value {
@@ -839,7 +839,7 @@ fn check_non_phantom_param_usage(
 fn has_unresolved_error_type(ty: &Type) -> bool {
     match &ty.value {
         Type_::UnresolvedError => true,
-        Type_::Ref(_, ty) => has_unresolved_error_type(ty),
+        Type_::Ref(_, ty) | Type_::AutoRef(_, ty) => has_unresolved_error_type(ty),
         Type_::Apply(_, _, ty_args) => ty_args.iter().any(has_unresolved_error_type),
         Type_::Fun(args, result) => {
             args.iter().any(has_unresolved_error_type) || has_unresolved_error_type(result)
@@ -1065,6 +1065,11 @@ fn join<T: ToString, F: FnOnce() -> T>(
         None => context.error_type(loc),
         Some(ty) => ty,
     }
+}
+
+fn autoborrow(context: &mut Context, loc: Loc, pre_t: Type) -> (N::RefVar, Type) {
+    let ty = core::ready_tvars(&context.subst, pre_t);
+    core::make_autoref(context, loc, ty)
 }
 
 //**************************************************************************************************
@@ -1619,10 +1624,10 @@ fn exp(context: &mut Context, ne: Box<N::Exp>) -> Box<T::Exp> {
 
 fn binop(
     context: &mut Context,
-    el: Box<T::Exp>,
+    mut el: Box<T::Exp>,
     bop: BinOp,
     loc: Loc,
-    er: Box<T::Exp>,
+    mut er: Box<T::Exp>,
 ) -> Box<T::Exp> {
     use BinOp_::*;
     use T::UnannotatedExp_ as TE;
@@ -1658,22 +1663,39 @@ fn binop(
         }
 
         Eq | Neq => {
-            let ability_msg = Some(format!(
-                "'{}' requires the '{}' ability as the value is consumed. Try \
-                         borrowing the values with '&' first.'",
-                &bop,
-                Ability_::Drop,
-            ));
-            context.add_ability_constraint(
-                el.exp.loc,
-                ability_msg.clone(),
-                el.ty.clone(),
-                Ability_::Drop,
-            );
-            context.add_ability_constraint(er.exp.loc, ability_msg, er.ty.clone(), Ability_::Drop);
-            let ty = join(context, bop.loc, msg, el.ty.clone(), er.ty.clone());
-            context.add_single_type_constraint(loc, msg(), ty.clone());
-            (Type_::bool(loc), ty)
+            let (rv_left, ltype) = autoborrow(context, el.exp.loc, el.ty.clone());
+            let (rv_right, rtype) = autoborrow(context, el.exp.loc, er.ty.clone());
+            if join_opt(context, bop.loc, msg, ltype, rtype).is_none() {
+                // Underling types incompatible, so error here.
+                (Type_::bool(loc), context.error_type(loc))
+            } else {
+                el = resolve_autoborrow(context, el.exp.loc, rv_left, el);
+                er = resolve_autoborrow(context, er.exp.loc, rv_right, er);
+                // TODO(cgswords): these constraints could be softened by checking locally if the
+                // underlying type satisfy them, and, if not, forcing the autoborrows to be
+                // references.
+                let ability_msg = Some(format!(
+                    "'{}' requires the '{}' ability as the value is consumed. Try \
+                             borrowing the values with '&' first.'",
+                    &bop,
+                    Ability_::Drop,
+                ));
+                context.add_ability_constraint(
+                    el.exp.loc,
+                    ability_msg.clone(),
+                    el.ty.clone(),
+                    Ability_::Drop,
+                );
+                context.add_ability_constraint(
+                    er.exp.loc,
+                    ability_msg,
+                    er.ty.clone(),
+                    Ability_::Drop,
+                );
+                let ty = join(context, bop.loc, msg, el.ty.clone(), er.ty.clone());
+                context.add_single_type_constraint(loc, msg(), ty.clone());
+                (Type_::bool(loc), ty)
+            }
         }
 
         And | Or => {
@@ -2308,6 +2330,89 @@ impl crate::shared::ast_debug::AstDebug for ExpDotted_ {
     }
 }
 
+// Autoborrowing and expression handling for non-dotted expressions.
+
+fn resolve_autoborrow(
+    context: &mut Context,
+    loc: Loc,
+    rv: N::RefVar,
+    e: Box<T::Exp>,
+) -> Box<T::Exp> {
+    use core::RefKind::*;
+    use Type_::*;
+    let ety = &e.ty;
+    let target_refkind_opt = core::unfold_ref_var(&context.subst, rv);
+    let current_ty = core::unfold_type(&context.subst, ety.clone());
+
+    match target_refkind_opt {
+        Some(Forward(_)) => unreachable!(),
+        Some(Value) => {
+            assert!(!matches!(current_ty.value, Ref(_, _))); // Or typing failed somewhere
+            e
+        }
+        Some(ImmRef) => {
+            match current_ty.value {
+                Ref(false, _t) => e,
+                Ref(true, t) => {
+                    let freeze_type = sp(loc, Ref(false, Box::new(*t)));
+                    let freeze_exp = sp(
+                        loc,
+                        T::UnannotatedExp_::Annotate(e, Box::new(freeze_type.clone())),
+                    );
+                    Box::new(T::exp(freeze_type, freeze_exp))
+                }
+                _ => exp_to_borrow(context, loc, /* mut_ */ false, e, current_ty),
+            }
+        }
+        Some(MutRef) => {
+            match current_ty.value {
+                Ref(false, _t) => panic!("ICE typing should have failed"),
+                Ref(true, _t) => e,
+                _ => exp_to_borrow(context, loc, /* mut_ */ true, e, current_ty),
+            }
+        }
+        None => {
+            // If the autoborrow variable never got decided, that means it only ever joined with
+            // othr auto-borrows. For now, we treat it as a value (though we could treat it as a
+            // ref to ease some drop cases).
+            e
+        }
+    }
+}
+
+fn exp_to_borrow(
+    context: &mut Context,
+    loc: Loc,
+    mut_: bool,
+    eb: Box<T::Exp>,
+    cur_ty: Type,
+) -> Box<T::Exp> {
+    use Type_::*;
+    use T::UnannotatedExp_ as TE;
+    warn_on_constant_borrow(context, loc, &eb);
+    let eb_ty = eb.ty;
+    let sp!(ebloc, eb_) = eb.exp;
+    let e_ = match eb_ {
+        TE::Use(v) => {
+            if mut_ {
+                check_mutability(context, loc, "mutable borrow", &v);
+            }
+            TE::BorrowLocal(mut_, v)
+        }
+        eb_ => {
+            match &eb_ {
+                TE::Move { from_user, .. } | TE::Copy { from_user, .. } => {
+                    assert!(*from_user)
+                }
+                _ => (),
+            }
+            TE::TempBorrow(mut_, Box::new(T::exp(eb_ty, sp(ebloc, eb_))))
+        }
+    };
+    let ty = sp(loc, Ref(mut_, Box::new(cur_ty)));
+    Box::new(T::exp(ty, sp(loc, e_)))
+}
+
 //**************************************************************************************************
 // Calls
 //**************************************************************************************************
@@ -2368,7 +2473,7 @@ fn method_call_resolve(
                     assert!(context.env.has_errors());
                     return None;
                 }
-                Ty::Ref(_, _) | Ty::Var(_) => panic!("ICE unfolding failed"),
+                Ty::Ref(_, _) | Ty::Var(_) | Ty::AutoRef(_, _) => panic!("ICE unfolding failed"),
                 Ty::Apply(_, _, _) => unreachable!(),
             };
             context.env.add_diag(diag!(
@@ -2416,7 +2521,7 @@ fn edotted_ty_base(ty: &Type) -> &Type {
         | Type_::Apply(_, _, _)
         | Type_::Fun(_, _) => ty,
         Type_::Ref(_, inner) => inner,
-        Type_::Var(_) => panic!("ICE unfolding failed"),
+        Type_::AutoRef(_, _) | Type_::Var(_) => panic!("ICE unfolding failed"),
     }
 }
 

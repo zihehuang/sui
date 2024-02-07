@@ -545,6 +545,12 @@ fn base_type(context: &Context, sp!(loc, nb_): N::Type) -> H::BaseType {
             loc.start(),
             loc.end()
         ),
+        NT::AutoRef(_, _) => panic!(
+            "ICE autoref not expanded: {}:{}-{}",
+            loc.file_hash(),
+            loc.start(),
+            loc.end()
+        ),
         NT::Apply(None, n, tys) => {
             NT::Apply(None, n, tys).print_verbose();
             panic!("ICE kind not expanded: {:#?}", loc)

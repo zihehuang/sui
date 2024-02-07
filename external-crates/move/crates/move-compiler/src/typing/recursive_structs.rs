@@ -97,6 +97,7 @@ fn type_(context: &mut Context, sp!(loc, ty_): &N::Type) {
     use N::Type_::*;
     match ty_ {
         Var(_) => panic!("ICE tvar in struct field type"),
+        AutoRef(_, _) => panic!("ICE autoref in struct field type"),
         Unit | Anything | UnresolvedError | Param(_) => (),
         Ref(_, t) => type_(context, t),
         Apply(_, sp!(_, tn_), tys) => {

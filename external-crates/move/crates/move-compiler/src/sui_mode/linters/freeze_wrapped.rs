@@ -187,6 +187,7 @@ impl<'a> Context<'a> {
             | T::Unit
             | T::Ref(_, _)
             | T::Var(_)
+            | T::AutoRef(_, _)
             | T::Anything
             | T::UnresolvedError
             | T::Fun(_, _) => None,

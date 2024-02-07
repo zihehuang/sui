@@ -75,6 +75,7 @@ pub fn type_(context: &mut Context, ty: &mut Type) {
             *ty = replacement;
             type_(context, ty);
         }
+        AutoRef(_, _) => panic!("ICE autoref should never be used as a type on an expression"),
         Apply(Some(_), sp!(_, TypeName_::Builtin(_)), tys) => types(context, tys),
         Apply(Some(_), _, _) => panic!("ICE expanding pre expanded type"),
         Apply(None, _, _) => {

@@ -667,6 +667,7 @@ fn is_mut_clock(param_ty: &Type) -> bool {
         Type_::Unit
         | Type_::Param(_)
         | Type_::Var(_)
+        | Type_::AutoRef(_, _)
         | Type_::Anything
         | Type_::UnresolvedError
         | Type_::Fun(_, _) => false,
@@ -732,7 +733,11 @@ fn is_entry_primitive_ty(param_ty: &Type) -> bool {
         Type_::Unit => false,
 
         // Error case nothing to do
-        Type_::UnresolvedError | Type_::Anything | Type_::Var(_) | Type_::Fun(_, _) => true,
+        Type_::UnresolvedError
+        | Type_::Anything
+        | Type_::Var(_)
+        | Type_::AutoRef(_, _)
+        | Type_::Fun(_, _) => true,
     }
 }
 
@@ -765,6 +770,7 @@ fn is_entry_object_ty_inner(param_ty: &Type) -> bool {
         Type_::UnresolvedError
         | Type_::Anything
         | Type_::Var(_)
+        | Type_::AutoRef(_, _)
         | Type_::Unit
         | Type_::Fun(_, _) => true,
         // Unreachable cases
@@ -827,7 +833,11 @@ fn entry_return(
             }
         }
         // Error case nothing to do
-        Type_::UnresolvedError | Type_::Anything | Type_::Var(_) | Type_::Fun(_, _) => (),
+        Type_::UnresolvedError
+        | Type_::Anything
+        | Type_::Var(_)
+        | Type_::AutoRef(_, _)
+        | Type_::Fun(_, _) => (),
         // Unreachable cases
         Type_::Apply(None, _, _) => unreachable!("ICE abilities should have been expanded"),
     }

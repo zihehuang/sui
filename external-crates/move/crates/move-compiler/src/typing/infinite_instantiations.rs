@@ -78,6 +78,7 @@ impl<'a> Context<'a> {
         use N::Type_::*;
         match targ_ {
             Var(_) => panic!("ICE tvar after expansion"),
+            AutoRef(_, _) => panic!("ICE autoref after expansion"),
             Unit | Anything | UnresolvedError => (),
             Ref(_, t) => {
                 let info = EdgeInfo {

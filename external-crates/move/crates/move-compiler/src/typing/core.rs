@@ -11,7 +11,7 @@ use crate::{
     expansion::ast::{AbilitySet, ModuleIdent, ModuleIdent_, Visibility},
     ice,
     naming::ast::{
-        self as N, BlockLabel, BuiltinTypeName_, Color, ResolvedUseFuns, StructDefinition,
+        self as N, BlockLabel, BuiltinTypeName_, Color, RefVar, ResolvedUseFuns, StructDefinition,
         StructTypeParameter, TParam, TParamID, TVar, Type, TypeName, TypeName_, Type_, UseFunKind,
         Var,
     },
@@ -616,10 +616,19 @@ impl<'env> Context<'env> {
 // Subst
 //**************************************************************************************************
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum RefKind {
+    Value,
+    ImmRef,
+    MutRef,
+    Forward(RefVar),
+}
+
 #[derive(Clone, Debug)]
 pub struct Subst {
     tvars: HashMap<TVar, Type>,
     num_vars: HashMap<TVar, Loc>,
+    ref_vars: HashMap<RefVar, RefKind>,
 }
 
 impl Subst {
@@ -627,6 +636,7 @@ impl Subst {
         Self {
             tvars: HashMap::new(),
             num_vars: HashMap::new(),
+            ref_vars: HashMap::new(),
         }
     }
 
@@ -655,11 +665,23 @@ impl Subst {
     pub fn is_num_var(&self, tvar: TVar) -> bool {
         self.num_vars.contains_key(&tvar)
     }
+
+    pub fn insert_ref_var(&mut self, rvar: RefVar, rk: RefKind) {
+        self.ref_vars.insert(rvar, rk);
+    }
+
+    pub fn get_ref_var(&self, rvar: RefVar) -> Option<&RefKind> {
+        self.ref_vars.get(&rvar)
+    }
 }
 
 impl ast_debug::AstDebug for Subst {
     fn ast_debug(&self, w: &mut ast_debug::AstWriter) {
-        let Subst { tvars, num_vars } = self;
+        let Subst {
+            tvars,
+            num_vars,
+            ref_vars,
+        } = self;
 
         w.write("tvars:");
         w.indent(4, |w| {
@@ -678,7 +700,39 @@ impl ast_debug::AstDebug for Subst {
             for tvar in num_vars {
                 w.writeln(&format!("{:?}", tvar))
             }
-        })
+        });
+        w.write("ref_vars:");
+        w.indent(4, |w| {
+            let mut rvars = ref_vars.iter().collect::<Vec<_>>();
+            rvars.sort_by_key(|(v, _)| *v);
+            for (rvar, ref_kind) in rvars {
+                w.write(&format!("{:?} => {:?}", rvar, ref_kind));
+                w.new_line();
+            }
+        });
+    }
+}
+
+impl RefKind {
+    fn join(&self, other: &RefKind) -> Option<RefKind> {
+        // val <: mut <: imm
+        match (self, other) {
+            (RefKind::Forward(_), _) => {
+                panic!("ICE ref var should have been forwarded before join")
+            }
+            (_, RefKind::Forward(_)) => {
+                panic!("ICE ref var should have been forwarded before join")
+            }
+            (RefKind::Value, RefKind::Value) => Some(RefKind::Value),
+            (RefKind::MutRef, RefKind::MutRef) => Some(RefKind::MutRef),
+            (RefKind::MutRef, RefKind::ImmRef) => Some(RefKind::ImmRef),
+            (RefKind::ImmRef, RefKind::ImmRef) => Some(RefKind::ImmRef),
+            (RefKind::ImmRef, RefKind::MutRef) => Some(RefKind::ImmRef),
+            (RefKind::ImmRef, RefKind::Value) => None,
+            (RefKind::MutRef, RefKind::Value) => None,
+            (RefKind::Value, RefKind::ImmRef) => None,
+            (RefKind::Value, RefKind::MutRef) => None,
+        }
     }
 }
 
@@ -745,7 +799,9 @@ fn error_format_impl_(b_: &Type_, subst: &Subst, nested: bool) -> String {
             if *mut_ { "mut " } else { "" },
             error_format_nested(ty, subst)
         ),
+        AutoRef(_, ty) => format!("auto {}", error_format_nested(ty, subst)),
     };
+    if nested {};
     if nested {
         res
     } else {
@@ -768,6 +824,7 @@ pub fn infer_abilities<const INFO_PASS: bool>(
         T::Unit => AbilitySet::collection(loc),
         T::Ref(_, _) => AbilitySet::references(loc),
         T::Var(_) => unreachable!("ICE unfold_type failed, which is impossible"),
+        T::AutoRef(_, _) => unreachable!("ICE autorefs should not survive local reasoning"),
         T::UnresolvedError | T::Anything => AbilitySet::all(loc),
         T::Param(TParam { abilities, .. }) | T::Apply(Some(abilities), _, _) => abilities,
         T::Apply(None, n, ty_args) => {
@@ -811,6 +868,7 @@ fn debug_abilities_info(context: &Context, ty: &Type) -> (Option<Loc>, AbilitySe
     match &ty.value {
         T::Unit | T::Ref(_, _) => (None, AbilitySet::references(loc), vec![]),
         T::Var(_) => panic!("ICE call unfold_type before debug_abilities_info"),
+        T::AutoRef(_, _) => panic!("ICE autorefs should not survive local reasoning"),
         T::UnresolvedError | T::Anything => (None, AbilitySet::all(loc), vec![]),
         T::Param(TParam {
             abilities,
@@ -839,6 +897,23 @@ pub fn make_num_tvar(context: &mut Context, loc: Loc) -> Type {
 
 pub fn make_tvar(_context: &mut Context, loc: Loc) -> Type {
     sp(loc, Type_::Var(TVar::next()))
+}
+
+pub fn make_autoref(context: &mut Context, loc: Loc, ty: Type) -> (RefVar, Type) {
+    use Type_::*;
+    let rv = RefVar::next();
+    let ty = match &ty.value {
+        Type_::Ref(true, inner) => {
+            context.subst.insert_ref_var(rv, RefKind::MutRef);
+            sp(loc, AutoRef(rv, Box::new(*inner.clone())))
+        }
+        Type_::Ref(false, inner) => {
+            context.subst.insert_ref_var(rv, RefKind::ImmRef);
+            sp(loc, AutoRef(rv, Box::new(*inner.clone())))
+        }
+        _ => sp(loc, AutoRef(rv, Box::new(ty.clone()))),
+    };
+    (rv, ty)
 }
 
 //**************************************************************************************************
@@ -1516,7 +1591,7 @@ fn solve_base_type_constraint(context: &mut Context, loc: Loc, msg: String, ty: 
     use Type_::*;
     let sp!(tyloc, unfolded_) = unfold_type(&context.subst, ty.clone());
     match unfolded_ {
-        Var(_) => unreachable!(),
+        Var(_) | AutoRef(_, _) => unreachable!(),
         Unit | Ref(_, _) | Apply(_, sp!(_, Multiple(_)), _) => {
             let tystr = error_format(ty, &context.subst);
             let tmsg = format!("Expected a single non-reference type, but found: {}", tystr);
@@ -1535,7 +1610,7 @@ fn solve_single_type_constraint(context: &mut Context, loc: Loc, msg: String, ty
     use Type_::*;
     let sp!(tyloc, unfolded_) = unfold_type(&context.subst, ty.clone());
     match unfolded_ {
-        Var(_) => unreachable!(),
+        Var(_) | AutoRef(_, _) => unreachable!(),
         Unit | Apply(_, sp!(_, Multiple(_)), _) => {
             let tmsg = format!(
                 "Expected a single type, but found expression list type: {}",
@@ -1563,6 +1638,19 @@ pub fn unfold_type(subst: &Subst, sp!(loc, t_): Type) -> Type {
                 Some(sp!(_, Type_::Var(_))) => unreachable!(),
                 None => sp(loc, Type_::Anything),
                 Some(inner) => inner.clone(),
+            }
+        }
+        Type_::AutoRef(id, t) => {
+            let x = forward_ref_var(subst, id);
+            let t = Box::new(unfold_type(subst, *t));
+            match subst.get_ref_var(x) {
+                None => panic!("ICE unresolved autoref"),
+                Some(ref_kind) => match ref_kind {
+                    RefKind::Forward(_) => unreachable!(),
+                    RefKind::Value => *t,
+                    RefKind::ImmRef => sp(loc, Type_::Ref(false, t)),
+                    RefKind::MutRef => sp(loc, Type_::Ref(true, t)),
+                },
             }
         }
         x => sp(loc, x),
@@ -1609,6 +1697,7 @@ pub fn subst_tparams(subst: &TParamSubst, sp!(loc, t_): Type) -> Type {
     match t_ {
         x @ Unit | x @ UnresolvedError | x @ Anything => sp(loc, x),
         Var(_) => panic!("ICE tvar in subst_tparams"),
+        AutoRef(_, _) => panic!("ICE autoref in subst_tparams"),
         Ref(mut_, t) => sp(loc, Ref(mut_, Box::new(subst_tparams(subst, *t)))),
         Param(tp) => subst
             .get(&tp.id)
@@ -1651,7 +1740,25 @@ pub fn ready_tvars(subst: &Subst, sp!(loc, t_): Type) -> Type {
             let result = Box::new(ready_tvars(subst, *result));
             sp(loc, Fun(args, result))
         }
+        AutoRef(id, t) => {
+            let x = forward_ref_var(subst, id);
+            let t = Box::new(ready_tvars(subst, *t));
+            match subst.get_ref_var(x) {
+                None => sp(loc, AutoRef(x, t)),
+                Some(ref_kind) => match ref_kind {
+                    RefKind::Forward(_) => unreachable!(),
+                    RefKind::Value => *t,
+                    RefKind::ImmRef => sp(loc, Ref(false, t)),
+                    RefKind::MutRef => sp(loc, Ref(true, t)),
+                },
+            }
+        }
     }
+}
+
+pub fn unfold_ref_var(subst: &Subst, id: RefVar) -> Option<&RefKind> {
+    let rv = forward_ref_var(subst, id);
+    subst.get_ref_var(rv)
 }
 
 //**************************************************************************************************
@@ -1683,6 +1790,8 @@ pub fn instantiate(context: &mut Context, sp!(loc, t_): Type) -> Type {
         // substituting type variables into the macro body, and might hit one while expanding a
         // type in the macro where a type parameter's argument had a type variable.
         x @ Var(_) => x,
+        // Conversely, autorefs should not live long enough to flow to an instantiation spot.
+        AutoRef(_, _) => panic!("ICE instantiate autoref"),
     };
     sp(loc, it_)
 }
@@ -1854,6 +1963,7 @@ pub fn give_tparams_all_abilities(sp!(_, ty_): &mut Type) {
             give_tparams_all_abilities(ret)
         }
         Type_::Param(_) => *ty_ = Type_::Anything,
+        Type_::AutoRef(_, _) => panic!("ICE autoref should never occur in macro signature"),
     }
 }
 
@@ -2003,7 +2113,12 @@ fn join_impl(
             subst.insert(new_tvar, other.clone());
             join_tvar(subst, case, other.loc, new_tvar, *loc, *id)
         }
-
+        (sp!(loc1, AutoRef(rv1, t1)), sp!(loc2, AutoRef(rv2, t2))) => {
+            join_ref_var(subst, case, *loc1, *rv1, t1, *loc2, *rv2, t2)
+        }
+        (other, sp!(loc, AutoRef(rv, rvtype))) | (sp!(loc, AutoRef(rv, rvtype)), other) => {
+            join_bind_ref_var(subst, case, *loc, *rv, rvtype, other)
+        }
         (sp!(_, UnresolvedError), other) | (other, sp!(_, UnresolvedError)) => {
             Ok((subst, other.clone()))
         }
@@ -2108,6 +2223,7 @@ fn join_bind_tvar(subst: &mut Subst, loc: Loc, tvar: TVar, ty: Type) -> Result<b
                 used.insert(*v, *loc);
             }
             T::Ref(_, inner) => used_tvars(used, inner),
+            T::AutoRef(_, inner) => used_tvars(used, inner),
             T::Apply(_, _, inners) => inners
                 .iter()
                 .rev()
@@ -2160,5 +2276,121 @@ fn check_num_tvar_(subst: &Subst, ty: &Type) -> bool {
             }
         }
         _ => false,
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+// Join for Ref Vars
+//--------------------------------------------------------------------------------------------------
+
+fn join_ref_var(
+    mut subst: Subst,
+    case: TypingCase,
+    loc1: Loc,
+    id1: RefVar,
+    lhs: &Type,
+    loc2: Loc,
+    id2: RefVar,
+    rhs: &Type,
+) -> Result<(Subst, Type), TypingError> {
+    use Type_::AutoRef;
+    let ref_var1 = forward_ref_var(&subst, id1);
+    let ref_var2 = forward_ref_var(&subst, id2);
+
+    let ref_kind1 = subst.get_ref_var(ref_var1);
+    let ref_kind2 = subst.get_ref_var(ref_var2);
+
+    let new_ref_var = RefVar::next();
+
+    match (ref_kind1, ref_kind2) {
+        (None, None) => {
+            // If both auto-refs are unset, combine them and join their types.
+            subst.insert_ref_var(ref_var1, RefKind::Forward(new_ref_var));
+            subst.insert_ref_var(ref_var2, RefKind::Forward(new_ref_var));
+            let (subst, ty) = join_impl(subst, case, lhs, rhs)?;
+            Ok((subst, sp(loc2, AutoRef(new_ref_var, Box::new(ty)))))
+        }
+        (Some(rk1), Some(rk2)) => {
+            assert!(!matches!(rk1, RefKind::Forward(_)));
+            assert!(!matches!(rk2, RefKind::Forward(_)));
+            if let Some(join_kind) = rk1.join(rk2) {
+                // If both auto-refs are set and can join, we join them.
+                subst.insert_ref_var(ref_var1, RefKind::Forward(new_ref_var));
+                subst.insert_ref_var(ref_var2, RefKind::Forward(new_ref_var));
+                subst.insert_ref_var(new_ref_var, join_kind);
+                let (subst, ty) = join_impl(subst, case, lhs, rhs)?;
+                Ok((subst, sp(loc2, AutoRef(new_ref_var, Box::new(ty)))))
+            } else {
+                // If they are both already set without a join, realize and recur for the error.
+                let lhs = realize_autoref(loc1, rk1, lhs.clone());
+                let rhs = realize_autoref(loc2, rk2, rhs.clone());
+                join_impl(subst, case, &lhs, &rhs)
+            }
+        }
+        (None, Some(rk2)) => {
+            let lhs = sp(loc1, AutoRef(ref_var1, Box::new(lhs.clone())));
+            let rhs = realize_autoref(loc2, rk2, rhs.clone());
+            join_impl(subst, case, &lhs, &rhs)
+        }
+        (Some(rk1), None) => {
+            let lhs = realize_autoref(loc1, rk1, lhs.clone());
+            let rhs = sp(loc2, AutoRef(ref_var2, Box::new(rhs.clone())));
+            join_impl(subst, case, &lhs, &rhs)
+        }
+    }
+}
+
+fn join_bind_ref_var(
+    mut subst: Subst,
+    case: TypingCase,
+    loc: Loc,
+    rv: RefVar,
+    rvtype: &Type,
+    other @ sp!(_, otype): &Type,
+) -> Result<(Subst, Type), TypingError> {
+    use Type_::*;
+    let rv = forward_ref_var(&subst, rv);
+
+    match subst.get_ref_var(rv) {
+        Some(RefKind::Forward(_)) => unreachable!(),
+        None => match otype {
+            Ref(false, t) => {
+                subst.insert_ref_var(rv, RefKind::ImmRef);
+                join_impl(subst, case, rvtype, t)
+            }
+            Ref(true, t) => {
+                subst.insert_ref_var(rv, RefKind::MutRef);
+                join_impl(subst, case, rvtype, t)
+            }
+            Anything | UnresolvedError => Ok((subst, other.clone())),
+            _ => {
+                subst.insert_ref_var(rv, RefKind::Value);
+                join_impl(subst, case, rvtype, other)
+            }
+        },
+        Some(ref_kind) => {
+            let rvtype = realize_autoref(loc, ref_kind, rvtype.clone());
+            join_impl(subst, case, &rvtype, other)
+        }
+    }
+}
+
+fn realize_autoref(loc: Loc, ref_kind: &RefKind, ty: Type) -> Type {
+    use Type_::Ref;
+    match ref_kind {
+        RefKind::Value => ty,
+        RefKind::ImmRef => sp(loc, Ref(false, Box::new(ty))),
+        RefKind::MutRef => sp(loc, Ref(true, Box::new(ty))),
+        RefKind::Forward(_) => panic!("ICE must unfold ref var before realizing"),
+    }
+}
+
+fn forward_ref_var(subst: &Subst, id: RefVar) -> RefVar {
+    let mut cur = id;
+    loop {
+        match subst.get_ref_var(cur) {
+            Some(RefKind::Forward(next)) => cur = *next,
+            Some(_) | None => break cur,
+        }
     }
 }
