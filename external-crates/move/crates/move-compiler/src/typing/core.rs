@@ -902,16 +902,19 @@ pub fn make_tvar(_context: &mut Context, loc: Loc) -> Type {
 pub fn make_autoref(context: &mut Context, loc: Loc, ty: Type) -> (RefVar, Type) {
     use Type_::*;
     let rv = RefVar::next();
-    let ty = match &ty.value {
-        Type_::Ref(true, inner) => {
+    match &ty.value {
+        Ref(true, inner) => {
             context.subst.insert_ref_var(rv, RefKind::MutRef);
-            sp(loc, AutoRef(rv, Box::new(*inner.clone())))
+            (rv, sp(loc, AutoRef(rv, inner)))
         }
-        Type_::Ref(false, inner) => {
+        Ref(false, inner) => {
             context.subst.insert_ref_var(rv, RefKind::ImmRef);
-            sp(loc, AutoRef(rv, Box::new(*inner.clone())))
+            (rv, sp(loc, AutoRef(rv, inner)))
+        }        
+        Anything | UnresolvedError | Var(_) | Unit | Param(_) | Apply(_, _) | Fun(_, _) => {
+            (rv, sp(loc, AutoRef(rv, inner)))
         }
-        _ => sp(loc, AutoRef(rv, Box::new(ty.clone()))),
+        AutoRef(existing_rv, _) => (*existing_rv, ty),
     };
     (rv, ty)
 }
