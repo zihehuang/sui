@@ -1663,7 +1663,10 @@ fn binop(
         }
 
         Eq | Neq => {
-            let autoborrow_err = if context.env.supports_feature(context.current_package(), FeatureGate::Autoborrow)  {
+            let autoborrow_err = if context
+                .env
+                .supports_feature(context.current_package(), FeatureGate::Autoborrow)
+            {
                 let (rv_left, ltype) = autoborrow(context, el.exp.loc, el.ty.clone());
                 let (rv_right, rtype) = autoborrow(context, el.exp.loc, er.ty.clone());
                 if join_opt(context, bop.loc, msg, ltype, rtype).is_none() {
