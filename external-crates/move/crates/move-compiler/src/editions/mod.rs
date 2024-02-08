@@ -40,6 +40,7 @@ pub enum FeatureGate {
     Move2024Paths,
     MacroFuns,
     Move2024Migration,
+    Autoborrow,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, PartialOrd, Ord, Default)]
@@ -118,6 +119,7 @@ const E2024_ALPHA_FEATURES: &[FeatureGate] = &[
     FeatureGate::BlockLabels,
     FeatureGate::Move2024Paths,
     FeatureGate::MacroFuns,
+    FeatureGate::Autoborrow,
 ];
 
 const E2024_MIGRATION_FEATURES: &[FeatureGate] = &[FeatureGate::Move2024Migration];
@@ -212,6 +214,7 @@ impl FeatureGate {
             FeatureGate::Move2024Paths => "Move 2024 paths are",
             FeatureGate::MacroFuns => "'macro' functions are",
             FeatureGate::Move2024Migration => "Move 2024 migration is",
+            FeatureGate::Autoborrow => "Automatic borrowing is",
         }
     }
 }

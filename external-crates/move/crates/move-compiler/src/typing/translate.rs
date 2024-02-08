@@ -1663,38 +1663,48 @@ fn binop(
         }
 
         Eq | Neq => {
-            let (rv_left, ltype) = autoborrow(context, el.exp.loc, el.ty.clone());
-            let (rv_right, rtype) = autoborrow(context, el.exp.loc, er.ty.clone());
-            if join_opt(context, bop.loc, msg, ltype, rtype).is_none() {
-                // Underling types incompatible, so error here.
-                (Type_::bool(loc), context.error_type(loc))
+            let autoborrow_err = if context.env.supports_feature(context.current_package(), FeatureGate::Autoborrow)  {
+                let (rv_left, ltype) = autoborrow(context, el.exp.loc, el.ty.clone());
+                let (rv_right, rtype) = autoborrow(context, el.exp.loc, er.ty.clone());
+                if join_opt(context, bop.loc, msg, ltype, rtype).is_none() {
+                    // Underling types incompatible, so error here.
+                    Some((Type_::bool(loc), context.error_type(loc)))
+                } else {
+                    el = resolve_autoborrow(context, el.exp.loc, rv_left, el);
+                    er = resolve_autoborrow(context, er.exp.loc, rv_right, er);
+                    None
+                }
             } else {
-                el = resolve_autoborrow(context, el.exp.loc, rv_left, el);
-                er = resolve_autoborrow(context, er.exp.loc, rv_right, er);
-                // TODO(cgswords): these constraints could be softened by checking locally if the
-                // underlying type satisfy them, and, if not, forcing the autoborrows to be
-                // references.
-                let ability_msg = Some(format!(
-                    "'{}' requires the '{}' ability as the value is consumed. Try \
-                             borrowing the values with '&' first.'",
-                    &bop,
-                    Ability_::Drop,
-                ));
-                context.add_ability_constraint(
-                    el.exp.loc,
-                    ability_msg.clone(),
-                    el.ty.clone(),
-                    Ability_::Drop,
-                );
-                context.add_ability_constraint(
-                    er.exp.loc,
-                    ability_msg,
-                    er.ty.clone(),
-                    Ability_::Drop,
-                );
-                let ty = join(context, bop.loc, msg, el.ty.clone(), er.ty.clone());
-                context.add_single_type_constraint(loc, msg(), ty.clone());
-                (Type_::bool(loc), ty)
+                None
+            };
+            match autoborrow_err {
+                Some((ty, opty)) => (ty, opty),
+                None => {
+                    // TODO(cgswords): these constraints could be softened by checking locally if the
+                    // underlying type satisfy them, and, if not, forcing the autoborrows to be
+                    // references.
+                    let ability_msg = Some(format!(
+                        "'{}' requires the '{}' ability as the value is consumed. Try \
+                                 borrowing the values with '&' first.'",
+                        &bop,
+                        Ability_::Drop,
+                    ));
+                    context.add_ability_constraint(
+                        el.exp.loc,
+                        ability_msg.clone(),
+                        el.ty.clone(),
+                        Ability_::Drop,
+                    );
+                    context.add_ability_constraint(
+                        er.exp.loc,
+                        ability_msg,
+                        er.ty.clone(),
+                        Ability_::Drop,
+                    );
+                    let ty = join(context, bop.loc, msg, el.ty.clone(), er.ty.clone());
+                    context.add_single_type_constraint(loc, msg(), ty.clone());
+                    (Type_::bool(loc), ty)
+                }
             }
         }
 

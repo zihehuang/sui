@@ -799,7 +799,17 @@ fn error_format_impl_(b_: &Type_, subst: &Subst, nested: bool) -> String {
             if *mut_ { "mut " } else { "" },
             error_format_nested(ty, subst)
         ),
-        AutoRef(_, ty) => format!("auto {}", error_format_nested(ty, subst)),
+        AutoRef(var, ty) => {
+            let var = forward_ref_var(subst, *var);
+            let ref_kind = match subst.get_ref_var(var) {
+                Some(RefKind::Value) => "",
+                Some(RefKind::ImmRef) => "&",
+                Some(RefKind::MutRef) => "&mut ",
+                Some(RefKind::Forward(_)) => unreachable!(),
+                None => "auto ",
+            };
+            format!("{}{}", ref_kind, error_format_nested(ty, subst))
+        }
     };
     if nested {
         res
@@ -904,18 +914,25 @@ pub fn make_autoref(context: &mut Context, loc: Loc, ty: Type) -> (RefVar, Type)
     match &ty.value {
         Ref(true, inner) => {
             context.subst.insert_ref_var(rv, RefKind::MutRef);
-            (rv, sp(loc, AutoRef(rv, inner)))
+            (rv, sp(loc, AutoRef(rv, inner.clone())))
         }
         Ref(false, inner) => {
             context.subst.insert_ref_var(rv, RefKind::ImmRef);
-            (rv, sp(loc, AutoRef(rv, inner)))
-        }        
-        Anything | UnresolvedError | Var(_) | Unit | Param(_) | Apply(_, _) | Fun(_, _) => {
-            (rv, sp(loc, AutoRef(rv, inner)))
+            (rv, sp(loc, AutoRef(rv, inner.clone())))
+        }
+        Var(var) => {
+            let var = forward_tvar(&context.subst, *var);
+            if let Some(ty) = context.subst.get(var) {
+                make_autoref(context, loc, ty.clone())
+            } else {
+                (rv, sp(loc, AutoRef(rv, Box::new(ty.clone()))))
+            }
+        }
+        Anything | UnresolvedError | Unit | Param(_) | Apply(_, _, _) | Fun(_, _) => {
+            (rv, sp(loc, AutoRef(rv, Box::new(ty))))
         }
         AutoRef(existing_rv, _) => (*existing_rv, ty),
-    };
-    (rv, ty)
+    }
 }
 
 //**************************************************************************************************
@@ -2116,10 +2133,10 @@ fn join_impl(
             join_tvar(subst, case, other.loc, new_tvar, *loc, *id)
         }
         (sp!(loc1, AutoRef(rv1, t1)), sp!(loc2, AutoRef(rv2, t2))) => {
-            join_ref_var(subst, case, *loc1, *rv1, t1, *loc2, *rv2, t2)
+            join_autoref(subst, case, *loc1, *rv1, t1, *loc2, *rv2, t2)
         }
         (other, sp!(loc, AutoRef(rv, rvtype))) | (sp!(loc, AutoRef(rv, rvtype)), other) => {
-            join_bind_ref_var(subst, case, *loc, *rv, rvtype, other)
+            join_bind_autoref(subst, case, *loc, *rv, rvtype, other)
         }
         (sp!(_, UnresolvedError), other) | (other, sp!(_, UnresolvedError)) => {
             Ok((subst, other.clone()))
@@ -2285,7 +2302,7 @@ fn check_num_tvar_(subst: &Subst, ty: &Type) -> bool {
 // Join for Ref Vars
 //--------------------------------------------------------------------------------------------------
 
-fn join_ref_var(
+fn join_autoref(
     mut subst: Subst,
     case: TypingCase,
     loc1: Loc,
@@ -2306,7 +2323,7 @@ fn join_ref_var(
 
     match (ref_kind1, ref_kind2) {
         (None, None) => {
-            // If both auto-refs are unset, combine them and join their types.
+            // If both auto-refs are unset, combine them and `join_impl` their types.
             subst.insert_ref_var(ref_var1, RefKind::Forward(new_ref_var));
             subst.insert_ref_var(ref_var2, RefKind::Forward(new_ref_var));
             let (subst, ty) = join_impl(subst, case, lhs, rhs)?;
@@ -2315,18 +2332,28 @@ fn join_ref_var(
         (Some(rk1), Some(rk2)) => {
             assert!(!matches!(rk1, RefKind::Forward(_)));
             assert!(!matches!(rk2, RefKind::Forward(_)));
-            if let Some(join_kind) = rk1.join(rk2) {
-                // If both auto-refs are set and can join, we join them.
-                subst.insert_ref_var(ref_var1, RefKind::Forward(new_ref_var));
-                subst.insert_ref_var(ref_var2, RefKind::Forward(new_ref_var));
-                subst.insert_ref_var(new_ref_var, join_kind);
-                let (subst, ty) = join_impl(subst, case, lhs, rhs)?;
-                Ok((subst, sp(loc2, AutoRef(new_ref_var, Box::new(ty)))))
-            } else {
-                // If they are both already set without a join, realize and recur for the error.
-                let lhs = realize_autoref(loc1, rk1, lhs.clone());
-                let rhs = realize_autoref(loc2, rk2, rhs.clone());
-                join_impl(subst, case, &lhs, &rhs)
+            match &case {
+                TypingCase::Join => {
+                    if let Some(join_kind) = rk1.join(rk2) {
+                        // If both auto-refs are set and can join, we join them.
+                        subst.insert_ref_var(ref_var1, RefKind::Forward(new_ref_var));
+                        subst.insert_ref_var(ref_var2, RefKind::Forward(new_ref_var));
+                        subst.insert_ref_var(new_ref_var, join_kind);
+                        let (subst, ty) = join_impl(subst, case, lhs, rhs)?;
+                        Ok((subst, sp(loc2, AutoRef(new_ref_var, Box::new(ty)))))
+                    } else {
+                        // If both already set without a join, realize and recur for an error.
+                        let lhs = realize_autoref(loc1, rk1, lhs.clone());
+                        let rhs = realize_autoref(loc2, rk2, rhs.clone());
+                        join_impl(subst, case, &lhs, &rhs)
+                    }
+                }
+                TypingCase::Subtype => {
+                    // We can realize both and ask `join_impl` if this is a valid subtype.
+                    let lhs = realize_autoref(loc1, rk1, lhs.clone());
+                    let rhs = realize_autoref(loc2, rk2, rhs.clone());
+                    join_impl(subst, case, &lhs, &rhs)
+                }
             }
         }
         (None, Some(rk2)) => {
@@ -2342,7 +2369,7 @@ fn join_ref_var(
     }
 }
 
-fn join_bind_ref_var(
+fn join_bind_autoref(
     mut subst: Subst,
     case: TypingCase,
     loc: Loc,
@@ -2352,7 +2379,6 @@ fn join_bind_ref_var(
 ) -> Result<(Subst, Type), TypingError> {
     use Type_::*;
     let rv = forward_ref_var(&subst, rv);
-
     match subst.get_ref_var(rv) {
         Some(RefKind::Forward(_)) => unreachable!(),
         None => match otype {
@@ -2365,10 +2391,12 @@ fn join_bind_ref_var(
                 join_impl(subst, case, rvtype, t)
             }
             Anything | UnresolvedError => Ok((subst, other.clone())),
-            _ => {
+            Unit | Param(_) | Apply(_, _, _) | Fun(_, _) => {
                 subst.insert_ref_var(rv, RefKind::Value);
                 join_impl(subst, case, rvtype, other)
             }
+            // Both of these cases should have been handled in `join_impl` instead of flowing here.
+            AutoRef(_, _) | Var(_) => unreachable!(),
         },
         Some(ref_kind) => {
             let rvtype = realize_autoref(loc, ref_kind, rvtype.clone());
