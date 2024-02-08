@@ -2356,7 +2356,7 @@ fn resolve_autoborrow(
 
     match target_refkind_opt {
         Some(Forward(_)) => unreachable!(),
-        Some(Value) => {
+        Some(Owned) => {
             assert!(!matches!(current_ty.value, Ref(_, _))); // Or typing failed somewhere
             e
         }

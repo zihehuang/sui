@@ -618,7 +618,7 @@ impl<'env> Context<'env> {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum RefKind {
-    Value,
+    Owned,
     ImmRef,
     MutRef,
     Forward(RefVar),
@@ -723,15 +723,15 @@ impl RefKind {
             (_, RefKind::Forward(_)) => {
                 panic!("ICE ref var should have been forwarded before join")
             }
-            (RefKind::Value, RefKind::Value) => Some(RefKind::Value),
+            (RefKind::Owned, RefKind::Owned) => Some(RefKind::Owned),
             (RefKind::MutRef, RefKind::MutRef) => Some(RefKind::MutRef),
             (RefKind::MutRef, RefKind::ImmRef) => Some(RefKind::ImmRef),
             (RefKind::ImmRef, RefKind::ImmRef) => Some(RefKind::ImmRef),
             (RefKind::ImmRef, RefKind::MutRef) => Some(RefKind::ImmRef),
-            (RefKind::ImmRef, RefKind::Value) => None,
-            (RefKind::MutRef, RefKind::Value) => None,
-            (RefKind::Value, RefKind::ImmRef) => None,
-            (RefKind::Value, RefKind::MutRef) => None,
+            (RefKind::ImmRef, RefKind::Owned) => None,
+            (RefKind::MutRef, RefKind::Owned) => None,
+            (RefKind::Owned, RefKind::ImmRef) => None,
+            (RefKind::Owned, RefKind::MutRef) => None,
         }
     }
 }
@@ -802,7 +802,7 @@ fn error_format_impl_(b_: &Type_, subst: &Subst, nested: bool) -> String {
         AutoRef(var, ty) => {
             let var = forward_ref_var(subst, *var);
             let ref_kind = match subst.get_ref_var(var) {
-                Some(RefKind::Value) => "",
+                Some(RefKind::Owned) => "",
                 Some(RefKind::ImmRef) => "&",
                 Some(RefKind::MutRef) => "&mut ",
                 Some(RefKind::Forward(_)) => unreachable!(),
@@ -1666,7 +1666,7 @@ pub fn unfold_type(subst: &Subst, sp!(loc, t_): Type) -> Type {
                 None => panic!("ICE unresolved autoref"),
                 Some(ref_kind) => match ref_kind {
                     RefKind::Forward(_) => unreachable!(),
-                    RefKind::Value => *t,
+                    RefKind::Owned => *t,
                     RefKind::ImmRef => sp(loc, Type_::Ref(false, t)),
                     RefKind::MutRef => sp(loc, Type_::Ref(true, t)),
                 },
@@ -1766,7 +1766,7 @@ pub fn ready_tvars(subst: &Subst, sp!(loc, t_): Type) -> Type {
                 None => sp(loc, AutoRef(x, t)),
                 Some(ref_kind) => match ref_kind {
                     RefKind::Forward(_) => unreachable!(),
-                    RefKind::Value => *t,
+                    RefKind::Owned => *t,
                     RefKind::ImmRef => sp(loc, Ref(false, t)),
                     RefKind::MutRef => sp(loc, Ref(true, t)),
                 },
@@ -2392,7 +2392,7 @@ fn join_bind_autoref(
             }
             Anything | UnresolvedError => Ok((subst, other.clone())),
             Unit | Param(_) | Apply(_, _, _) | Fun(_, _) => {
-                subst.insert_ref_var(rv, RefKind::Value);
+                subst.insert_ref_var(rv, RefKind::Owned);
                 join_impl(subst, case, rvtype, other)
             }
             // Both of these cases should have been handled in `join_impl` instead of flowing here.
@@ -2408,7 +2408,7 @@ fn join_bind_autoref(
 fn realize_autoref(loc: Loc, ref_kind: &RefKind, ty: Type) -> Type {
     use Type_::Ref;
     match ref_kind {
-        RefKind::Value => ty,
+        RefKind::Owned => ty,
         RefKind::ImmRef => sp(loc, Ref(false, Box::new(ty))),
         RefKind::MutRef => sp(loc, Ref(true, Box::new(ty))),
         RefKind::Forward(_) => panic!("ICE must unfold ref var before realizing"),
