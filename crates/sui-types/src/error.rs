@@ -13,7 +13,7 @@ use crate::{
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, fmt::Debug};
+use std::{collections::BTreeMap, error::Error, fmt::Debug};
 use strum_macros::{AsRefStr, IntoStaticStr};
 use thiserror::Error;
 use tonic::Status;
@@ -444,6 +444,8 @@ pub enum SuiError {
         new_epoch: EpochId,
         locked_by_tx: TransactionDigest,
     },
+    #[error("Too many requests")]
+    TooManyRequests,
     #[error("{TRANSACTION_NOT_FOUND_MSG_PREFIX} [{:?}].", digest)]
     TransactionNotFound { digest: TransactionDigest },
     #[error("{TRANSACTIONS_NOT_FOUND_MSG_PREFIX} [{:?}].", digests)]
@@ -659,6 +661,10 @@ impl From<ExecutionError> for SuiError {
 
 impl From<Status> for SuiError {
     fn from(status: Status) -> Self {
+        if status.message() == "Too many requests" {
+            return Self::TooManyRequests;
+        }
+
         let result = bcs::from_bytes::<SuiError>(status.details());
         if let Ok(sui_error) = result {
             sui_error
@@ -786,6 +792,11 @@ impl SuiError {
             SuiError::TxAlreadyFinalizedWithDifferentUserSigs => (false, true),
             SuiError::FailedToVerifyTxCertWithExecutedEffects { .. } => (false, true),
             SuiError::ObjectLockConflict { .. } => (false, true),
+
+            // NB: This is not an internal overload, but instead an imposed rate
+            // limit / blocking of a client. It must be non-retryable otherwise
+            // we will make the threat worse through automatic retries.
+            SuiError::TooManyRequests => (false, true),
 
             _ => (false, false),
         }
