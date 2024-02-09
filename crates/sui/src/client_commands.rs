@@ -707,6 +707,10 @@ pub enum SuiClientCommands {
         /// Write a json that contains comprehensive data about this transaction, in a file `replay_output_{tx_digest}.json` to the working directory.
         #[arg(long)]
         json: bool,
+
+        /// Write html that contains comprehensive data about this transaction, in a file `replay_output_{tx_digest}.html` to the working directory.
+        #[arg(long)]
+        html: bool,
     },
 
     /// Replay transactions listed in a file.
@@ -779,6 +783,7 @@ impl SuiClientCommands {
                 executor_version,
                 protocol_version,
                 json,
+                html,
             } => {
                 let cmd = ReplayToolCommand::ReplayTransaction {
                     tx_digest,
@@ -787,6 +792,7 @@ impl SuiClientCommands {
                     executor_version,
                     protocol_version,
                     json,
+                    html,
                 };
 
                 let rpc = context.config.get_active_env()?.rpc.clone();
