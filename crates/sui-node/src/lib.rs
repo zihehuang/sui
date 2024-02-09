@@ -648,7 +648,8 @@ impl SuiNode {
             &config,
             &prometheus_registry,
             custom_rpc_runtime,
-        )?;
+        )
+        .await?;
 
         let accumulator = Arc::new(StateAccumulator::new(store));
 
@@ -1283,7 +1284,7 @@ impl SuiNode {
             state.clone(),
             consensus_adapter,
             Arc::new(ValidatorServiceMetrics::new(prometheus_registry)),
-            config.policy_config.clone().unwrap_or_default(),
+            config.policy_config.clone(),
             config.firewall_config.clone(),
         )
         .await;
@@ -1733,7 +1734,7 @@ fn build_kv_store(
     )))
 }
 
-pub fn build_http_server(
+pub async fn build_http_server(
     state: Arc<AuthorityState>,
     transaction_orchestrator: &Option<Arc<TransactiondOrchestrator<NetworkAuthorityClient>>>,
     config: &NodeConfig,
@@ -1748,7 +1749,12 @@ pub fn build_http_server(
     let mut router = axum::Router::new();
 
     let json_rpc_router = {
-        let mut server = JsonRpcServerBuilder::new(env!("CARGO_PKG_VERSION"), prometheus_registry);
+        let mut server = JsonRpcServerBuilder::new(
+            env!("CARGO_PKG_VERSION"),
+            prometheus_registry,
+            config.policy_config.clone(),
+            config.firewall_config.clone(),
+        );
 
         let kv_store = build_kv_store(&state, config, prometheus_registry)?;
 
@@ -1804,7 +1810,7 @@ pub fn build_http_server(
         ))?;
         server.register_module(MoveUtils::new(state.clone()))?;
 
-        server.to_router(None)?
+        server.to_router(None).await?
     };
 
     router = router.merge(json_rpc_router);

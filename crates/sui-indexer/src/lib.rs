@@ -30,6 +30,7 @@ use store::IndexerStore;
 use sui_json_rpc::{JsonRpcServerBuilder, ServerHandle, ServerType};
 use sui_json_rpc_api::CLIENT_SDK_TYPE_HEADER;
 use sui_sdk::{SuiClient, SuiClientBuilder};
+use sui_types::traffic_control::RemoteFirewallConfig;
 
 use crate::apis::MoveUtilsApi;
 use crate::framework::IndexerBuilder;
@@ -388,7 +389,12 @@ pub async fn build_json_rpc_server<S: IndexerStore + Sync + Send + 'static + Clo
     config: &IndexerConfig,
     custom_runtime: Option<Handle>,
 ) -> Result<ServerHandle, IndexerError> {
-    let mut builder = JsonRpcServerBuilder::new(env!("CARGO_PKG_VERSION"), prometheus_registry);
+    let mut builder = JsonRpcServerBuilder::new(
+        env!("CARGO_PKG_VERSION"),
+        prometheus_registry,
+        None,
+        RemoteFirewallConfig::default(),
+    );
     let http_client = get_http_client(config.rpc_client_url.as_str())?;
 
     builder.register_module(ReadApi::new(

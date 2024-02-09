@@ -50,6 +50,7 @@ use sui_types::object::Object;
 use sui_types::sui_system_state::epoch_start_sui_system_state::EpochStartSystemStateTrait;
 use sui_types::sui_system_state::SuiSystemState;
 use sui_types::sui_system_state::SuiSystemStateTrait;
+use sui_types::traffic_control::{PolicyConfig, RemoteFirewallConfig};
 use sui_types::transaction::{
     CertifiedTransaction, Transaction, TransactionData, TransactionDataAPI, TransactionKind,
 };
@@ -728,6 +729,8 @@ pub struct TestClusterBuilder {
     overload_threshold_config: Option<OverloadThresholdConfig>,
     data_ingestion_dir: Option<PathBuf>,
     fullnode_run_with_range: Option<RunWithRange>,
+    fullnode_policy_config: Option<PolicyConfig>,
+    fullnode_fw_config: Option<RemoteFirewallConfig>,
 }
 
 impl TestClusterBuilder {
@@ -750,6 +753,8 @@ impl TestClusterBuilder {
             overload_threshold_config: None,
             data_ingestion_dir: None,
             fullnode_run_with_range: None,
+            fullnode_policy_config: None,
+            fullnode_fw_config: None,
         }
     }
 
@@ -757,6 +762,16 @@ impl TestClusterBuilder {
         if let Some(run_with_range) = run_with_range {
             self.fullnode_run_with_range = Some(run_with_range);
         }
+        self
+    }
+
+    pub fn with_fullnode_policy_config(mut self, config: Option<PolicyConfig>) -> Self {
+        self.fullnode_policy_config = config;
+        self
+    }
+
+    pub fn with_fullnode_fw_config(mut self, config: Option<RemoteFirewallConfig>) -> Self {
+        self.fullnode_fw_config = config;
         self
     }
 
@@ -987,7 +1002,9 @@ impl TestClusterBuilder {
                     .unwrap_or(self.validator_supported_protocol_versions_config.clone()),
             )
             .with_db_checkpoint_config(self.db_checkpoint_config_fullnodes.clone())
-            .with_fullnode_run_with_range(self.fullnode_run_with_range);
+            .with_fullnode_run_with_range(self.fullnode_run_with_range)
+            .with_fullnode_policy_config(self.fullnode_policy_config.clone())
+            .with_fullnode_fw_config(self.fullnode_fw_config.clone());
 
         if let Some(genesis_config) = self.genesis_config.take() {
             builder = builder.with_genesis_config(genesis_config);

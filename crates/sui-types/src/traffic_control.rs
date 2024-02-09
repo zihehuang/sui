@@ -4,17 +4,60 @@
 
 use std::{collections::HashMap, net::SocketAddr};
 
-use crate::error::{SuiError, SuiResult};
+use crate::error::SuiResult;
 use chrono::{DateTime, Utc};
+use core::hash::Hash;
+use jsonrpsee::core::server::helpers::MethodResponse;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::fmt::Debug;
 
 #[derive(Clone, Debug)]
+pub enum ServiceResponse {
+    Validator(SuiResult),
+    Fullnode(MethodResponse),
+}
+
+impl PartialEq for ServiceResponse {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (ServiceResponse::Validator(a), ServiceResponse::Validator(b)) => a == b,
+            (ServiceResponse::Fullnode(a), ServiceResponse::Fullnode(b)) => {
+                a.error_code == b.error_code && a.success == b.success
+            }
+            _ => false,
+        }
+    }
+}
+
+impl Eq for ServiceResponse {}
+
+impl Hash for ServiceResponse {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            ServiceResponse::Validator(result) => result.hash(state),
+            ServiceResponse::Fullnode(response) => {
+                response.error_code.hash(state);
+                response.success.hash(state);
+            }
+        }
+    }
+}
+
+impl ServiceResponse {
+    pub fn is_ok(&self) -> bool {
+        match self {
+            ServiceResponse::Validator(result) => result.is_ok(),
+            ServiceResponse::Fullnode(response) => response.success,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct TrafficTally {
     pub connection_ip: Option<SocketAddr>,
     pub proxy_ip: Option<SocketAddr>,
-    pub result: SuiResult,
+    pub result: ServiceResponse,
     pub timestamp: DateTime<Utc>,
 }
 
@@ -38,8 +81,9 @@ pub enum PolicyType {
     /* Below this point are test policies, and thus should not be used in production */
     ///
     /// Simple policy that adds connection_ip to blocklist when the same connection_ip
-    /// is encountered 3 times
-    Test3ConnIP,
+    /// is encountered in tally N times. If used in an error policy, this would trigger
+    /// after N errors
+    TestNConnIP(u64),
     /// Test policy that inspects the proxy_ip and connection_ip to ensure they are present
     /// in the tally. Tests IP forwarding. To be used only in tests that submit transactions
     /// through a client
@@ -67,7 +111,7 @@ pub trait Policy {
 #[derive(Clone)]
 pub enum TrafficControlPolicy {
     NoOp(NoOpPolicy),
-    Test3ConnIP(Test3ConnIPPolicy),
+    TestNConnIP(TestNConnIPPolicy),
     TestInspectIp(TestInspectIpPolicy),
     TestPanicOnInvocation(TestPanicOnInvocationPolicy),
 }
@@ -76,7 +120,7 @@ impl Policy for TrafficControlPolicy {
     fn handle_tally(&mut self, tally: TrafficTally) -> PolicyResponse {
         match self {
             TrafficControlPolicy::NoOp(policy) => policy.handle_tally(tally),
-            TrafficControlPolicy::Test3ConnIP(policy) => policy.handle_tally(tally),
+            TrafficControlPolicy::TestNConnIP(policy) => policy.handle_tally(tally),
             TrafficControlPolicy::TestInspectIp(policy) => policy.handle_tally(tally),
             TrafficControlPolicy::TestPanicOnInvocation(policy) => policy.handle_tally(tally),
         }
@@ -85,7 +129,7 @@ impl Policy for TrafficControlPolicy {
     fn policy_config(&self) -> &PolicyConfig {
         match self {
             TrafficControlPolicy::NoOp(policy) => policy.policy_config(),
-            TrafficControlPolicy::Test3ConnIP(policy) => policy.policy_config(),
+            TrafficControlPolicy::TestNConnIP(policy) => policy.policy_config(),
             TrafficControlPolicy::TestInspectIp(policy) => policy.policy_config(),
             TrafficControlPolicy::TestPanicOnInvocation(policy) => policy.policy_config(),
         }
@@ -95,7 +139,6 @@ impl Policy for TrafficControlPolicy {
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
 pub struct PolicyConfig {
-    pub tallyable_error_codes: Vec<SuiError>,
     pub connection_blocklist_ttl_sec: u64,
     pub proxy_blocklist_ttl_sec: u64,
     pub spam_policy_type: PolicyType,
@@ -115,8 +158,8 @@ impl PolicyConfig {
     fn to_policy(&self, policy_type: &PolicyType) -> TrafficControlPolicy {
         match policy_type {
             PolicyType::NoOp => TrafficControlPolicy::NoOp(NoOpPolicy::new(self.clone())),
-            PolicyType::Test3ConnIP => {
-                TrafficControlPolicy::Test3ConnIP(Test3ConnIPPolicy::new(self.clone()))
+            PolicyType::TestNConnIP(n) => {
+                TrafficControlPolicy::TestNConnIP(TestNConnIPPolicy::new(self.clone(), *n))
             }
             PolicyType::TestInspectIp => {
                 TrafficControlPolicy::TestInspectIp(TestInspectIpPolicy::new(self.clone()))
@@ -150,16 +193,18 @@ impl NoOpPolicy {
 ////////////// *** Test policies below this point *** //////////////
 
 #[derive(Clone)]
-pub struct Test3ConnIPPolicy {
+pub struct TestNConnIPPolicy {
     config: PolicyConfig,
     frequencies: HashMap<SocketAddr, u64>,
+    threshold: u64,
 }
 
-impl Test3ConnIPPolicy {
-    pub fn new(config: PolicyConfig) -> Self {
+impl TestNConnIPPolicy {
+    pub fn new(config: PolicyConfig, threshold: u64) -> Self {
         Self {
             config,
             frequencies: HashMap::new(),
+            threshold,
         }
     }
 
@@ -171,7 +216,7 @@ impl Test3ConnIPPolicy {
             .or_insert(0);
         *count += 1;
         PolicyResponse {
-            block_connection_ip: *count >= 3,
+            block_connection_ip: *count >= self.threshold,
             block_proxy_ip: false,
         }
     }

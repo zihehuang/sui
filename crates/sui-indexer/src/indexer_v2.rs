@@ -16,6 +16,7 @@ use std::env;
 use std::net::SocketAddr;
 use sui_json_rpc::ServerType;
 use sui_json_rpc::{JsonRpcServerBuilder, ServerHandle};
+use sui_types::traffic_control::RemoteFirewallConfig;
 use tokio::runtime::Handle;
 use tracing::info;
 
@@ -136,7 +137,12 @@ pub async fn build_json_rpc_server(
     config: &IndexerConfig,
     custom_runtime: Option<Handle>,
 ) -> Result<ServerHandle, IndexerError> {
-    let mut builder = JsonRpcServerBuilder::new(env!("CARGO_PKG_VERSION"), prometheus_registry);
+    let mut builder = JsonRpcServerBuilder::new(
+        env!("CARGO_PKG_VERSION"),
+        prometheus_registry,
+        None,
+        RemoteFirewallConfig::default(),
+    );
     let http_client = crate::get_http_client(config.rpc_client_url.as_str())?;
 
     builder.register_module(WriteApi::new(http_client.clone()))?;
