@@ -299,9 +299,10 @@ event-listener = { version = "2", default-features = false }
 expect-test = { version = "1", default-features = false }
 eyre = { version = "0.6" }
 fast_chemail = { version = "0.9", default-features = false }
-fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "ea66012b860d9dd152abb7f2156275698ee91126", features = ["beacon-dkg", "copy_key"] }
-fastcrypto-tbls = { git = "https://github.com/MystenLabs/fastcrypto", rev = "ea66012b860d9dd152abb7f2156275698ee91126" }
-fastcrypto-zkp = { git = "https://github.com/MystenLabs/fastcrypto", rev = "ea66012b860d9dd152abb7f2156275698ee91126", default-features = false }
+fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "dd238ffced8b2365288ee1ef268ef7c4f28f4c86", features = ["beacon-dkg", "copy_key"] }
+fastcrypto-tbls = { git = "https://github.com/MystenLabs/fastcrypto", rev = "dd238ffced8b2365288ee1ef268ef7c4f28f4c86" }
+fastcrypto-vdf = { git = "https://github.com/MystenLabs/fastcrypto", rev = "dd238ffced8b2365288ee1ef268ef7c4f28f4c86", default-features = false, features = ["experimental"] }
+fastcrypto-zkp = { git = "https://github.com/MystenLabs/fastcrypto", rev = "dd238ffced8b2365288ee1ef268ef7c4f28f4c86", default-features = false }
 fastrand-dff4ba8e3ae991db = { package = "fastrand", version = "1", default-features = false }
 fastrand-f595c2ba2a3f28df = { package = "fastrand", version = "2" }
 fd-lock = { version = "3", default-features = false }
@@ -401,6 +402,7 @@ io-lifetimes = { version = "1" }
 ipnetwork = { version = "0.20" }
 iri-string = { version = "0.4" }
 is-terminal = { version = "0.4", default-features = false }
+itertools-5ef9efb8ec2df382 = { package = "itertools", version = "0.12" }
 itertools-93f6ce9d446188ac = { package = "itertools", version = "0.10" }
 itoa = { version = "1", default-features = false }
 js-sys = { version = "0.3", default-features = false }
@@ -517,6 +519,8 @@ num-bigint-dig = { version = "0.8", default-features = false, features = ["i128"
 num-complex = { version = "0.4", default-features = false, features = ["std"] }
 num-integer = { version = "0.1", features = ["i128"] }
 num-iter = { version = "0.1", default-features = false, features = ["i128", "std"] }
+num-modular = { version = "0.5", default-features = false, features = ["num-bigint"] }
+num-prime = { version = "0.4" }
 num-rational = { version = "0.4", default-features = false, features = ["num-bigint-std", "std"] }
 num-traits = { version = "0.2", features = ["i128", "libm"] }
 num_cpus = { version = "1", default-features = false }
@@ -617,7 +621,7 @@ radium-ca01ad9e24f5d932 = { package = "radium", version = "0.7", default-feature
 radix_trie = { version = "0.2", default-features = false }
 rand-c38e5c1d305a1b54 = { package = "rand", version = "0.8", features = ["small_rng"] }
 rand-ca01ad9e24f5d932 = { package = "rand", version = "0.7" }
-rand_chacha-468e82937335b1c9 = { package = "rand_chacha", version = "0.3", default-features = false, features = ["std"] }
+rand_chacha-468e82937335b1c9 = { package = "rand_chacha", version = "0.3" }
 rand_core-3b31131e45eafb45 = { package = "rand_core", version = "0.6", default-features = false, features = ["std"] }
 rand_core-d8f496e17d97b5cb = { package = "rand_core", version = "0.5", default-features = false, features = ["std"] }
 rand_xorshift = { version = "0.3", default-features = false }
@@ -1175,10 +1179,11 @@ event-listener = { version = "2", default-features = false }
 expect-test = { version = "1", default-features = false }
 eyre = { version = "0.6" }
 fast_chemail = { version = "0.9", default-features = false }
-fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "ea66012b860d9dd152abb7f2156275698ee91126", features = ["beacon-dkg", "copy_key"] }
-fastcrypto-derive = { git = "https://github.com/MystenLabs/fastcrypto", rev = "ea66012b860d9dd152abb7f2156275698ee91126", default-features = false }
-fastcrypto-tbls = { git = "https://github.com/MystenLabs/fastcrypto", rev = "ea66012b860d9dd152abb7f2156275698ee91126" }
-fastcrypto-zkp = { git = "https://github.com/MystenLabs/fastcrypto", rev = "ea66012b860d9dd152abb7f2156275698ee91126", default-features = false }
+fastcrypto = { git = "https://github.com/MystenLabs/fastcrypto", rev = "dd238ffced8b2365288ee1ef268ef7c4f28f4c86", features = ["beacon-dkg", "copy_key"] }
+fastcrypto-derive = { git = "https://github.com/MystenLabs/fastcrypto", rev = "dd238ffced8b2365288ee1ef268ef7c4f28f4c86", default-features = false }
+fastcrypto-tbls = { git = "https://github.com/MystenLabs/fastcrypto", rev = "dd238ffced8b2365288ee1ef268ef7c4f28f4c86" }
+fastcrypto-vdf = { git = "https://github.com/MystenLabs/fastcrypto", rev = "dd238ffced8b2365288ee1ef268ef7c4f28f4c86", default-features = false, features = ["experimental"] }
+fastcrypto-zkp = { git = "https://github.com/MystenLabs/fastcrypto", rev = "dd238ffced8b2365288ee1ef268ef7c4f28f4c86", default-features = false }
 fastrand-dff4ba8e3ae991db = { package = "fastrand", version = "1", default-features = false }
 fastrand-f595c2ba2a3f28df = { package = "fastrand", version = "2" }
 fd-lock = { version = "3", default-features = false }
@@ -1289,6 +1294,7 @@ io-lifetimes = { version = "1" }
 ipnetwork = { version = "0.20" }
 iri-string = { version = "0.4" }
 is-terminal = { version = "0.4", default-features = false }
+itertools-5ef9efb8ec2df382 = { package = "itertools", version = "0.12" }
 itertools-93f6ce9d446188ac = { package = "itertools", version = "0.10" }
 itertools-a6292c17cd707f01 = { package = "itertools", version = "0.11", default-features = false, features = ["use_alloc"] }
 itoa = { version = "1", default-features = false }
@@ -1418,6 +1424,8 @@ num-bigint-dig = { version = "0.8", default-features = false, features = ["i128"
 num-complex = { version = "0.4", default-features = false, features = ["std"] }
 num-integer = { version = "0.1", features = ["i128"] }
 num-iter = { version = "0.1", default-features = false, features = ["i128", "std"] }
+num-modular = { version = "0.5", default-features = false, features = ["num-bigint"] }
+num-prime = { version = "0.4" }
 num-rational = { version = "0.4", default-features = false, features = ["num-bigint-std", "std"] }
 num-traits = { version = "0.2", features = ["i128", "libm"] }
 num_cpus = { version = "1", default-features = false }
@@ -1545,7 +1553,7 @@ radium-ca01ad9e24f5d932 = { package = "radium", version = "0.7", default-feature
 radix_trie = { version = "0.2", default-features = false }
 rand-c38e5c1d305a1b54 = { package = "rand", version = "0.8", features = ["small_rng"] }
 rand-ca01ad9e24f5d932 = { package = "rand", version = "0.7" }
-rand_chacha-468e82937335b1c9 = { package = "rand_chacha", version = "0.3", default-features = false, features = ["std"] }
+rand_chacha-468e82937335b1c9 = { package = "rand_chacha", version = "0.3" }
 rand_core-3b31131e45eafb45 = { package = "rand_core", version = "0.6", default-features = false, features = ["std"] }
 rand_core-d8f496e17d97b5cb = { package = "rand_core", version = "0.5", default-features = false, features = ["std"] }
 rand_xorshift = { version = "0.3", default-features = false }
