@@ -7,12 +7,12 @@
 module A0::m {
     use sui::object::UID;
 
-    struct Canary has key {
+    public struct Canary has key {
         id: UID,
         addr: vector<u8>,
     }
 
-    struct A {}
+    public struct A {}
 
 }
 
@@ -20,13 +20,13 @@ module A0::m {
 module A1::m {
     use sui::object::UID;
 
-    struct Canary has key {
+    public struct Canary has key {
         id: UID,
         addr: vector<u8>,
     }
 
-    struct A {}
-    struct B {}
+    public struct A {}
+    public struct B {}
 }
 
 //# upgrade --package A1 --upgrade-capability 1,1 --sender A
@@ -37,13 +37,13 @@ module A2::m {
     use sui::transfer;
     use sui::tx_context::{Self, TxContext};
 
-    struct Canary has key {
+    public struct Canary has key {
         id: UID,
         addr: vector<u8>,
     }
 
-    struct A {}
-    struct B {}
+    public struct A {}
+    public struct B {}
 
     entry fun canary<T>(use_original: bool, ctx: &mut TxContext) {
         let type = if (use_original) {
