@@ -23,6 +23,7 @@ struct Context<'env, 'lexer, 'input> {
     package_name: Option<Symbol>,
     env: &'env mut CompilationEnv,
     tokens: &'lexer mut Lexer<'input>,
+    panic_mode: bool,
 }
 
 impl<'env, 'lexer, 'input> Context<'env, 'lexer, 'input> {
@@ -35,6 +36,7 @@ impl<'env, 'lexer, 'input> Context<'env, 'lexer, 'input> {
             package_name,
             env,
             tokens,
+            panic_mode: false,
         }
     }
 }
@@ -2414,6 +2416,7 @@ fn parse_function_decl(
         Ok(tparams) => std::mem::replace(&mut type_parameters, Some(tparams)),
         Err(diag) => {
             context.env.add_diag(*diag);
+            context.panic_mode = true;
             return Ok(mk_result!(context));
         }
     };
@@ -2429,6 +2432,7 @@ fn parse_function_decl(
         Ok(params) => Some(params),
         Err(diag) => {
             context.env.add_diag(*diag);
+            context.panic_mode = true;
             return Ok(mk_result!(context));
         }
     };
@@ -2437,6 +2441,7 @@ fn parse_function_decl(
         Ok(t) => Some(t),
         Err(diag) => {
             context.env.add_diag(*diag);
+            context.panic_mode = true;
             return Ok(mk_result!(context));
         }
     };
@@ -2445,6 +2450,7 @@ fn parse_function_decl(
         Ok(a) => a,
         Err(diag) => {
             context.env.add_diag(*diag);
+            context.panic_mode = true;
             return Ok(mk_result!(context));
         }
     };
@@ -2453,6 +2459,7 @@ fn parse_function_decl(
         Ok(b) => Some(b),
         Err(diag) => {
             context.env.add_diag(*diag);
+            context.panic_mode = true;
             return Ok(mk_result!(context));
         }
     };
@@ -3131,7 +3138,18 @@ fn parse_module(
     while context.tokens.peek() != Tok::RBrace {
         let curr_token_loc = context.tokens.current_token_loc();
         match parse_module_member(context) {
-            Ok(m) => members.push(m),
+            Ok(m) => {
+                members.push(m);
+                if context.panic_mode {
+                    // we created a member but it is incomplete due to parsing error that put parser
+                    // into panic mode- skip to the next definition and reset panic mode
+                    context.panic_mode = false;
+                    stop_parsing = next_def_fast_forward(context, curr_token_loc);
+                    if stop_parsing {
+                        break;
+                    }
+                }
+            }
             Err(ErrCase::ContinueToModule(attrs)) => {
                 // while trying to parse module members, we moved past the current module and
                 // encountered a new one - keep parsing it at a higher level, keeping the
@@ -3142,18 +3160,8 @@ fn parse_module(
             }
             Err(ErrCase::Unknown(diag)) => {
                 context.env.add_diag(*diag);
-                let next_tok =
-                    skip_to_next_desired_tok_or_eof(context, is_start_of_member_or_module);
-                if next_tok == Tok::EOF || next_tok == Tok::Module {
-                    // either end of file or next module to potentially be parsed
-                    stop_parsing = true;
-                    break;
-                }
-                if curr_token_loc == context.tokens.current_token_loc() {
-                    // token wasn't advanced by either `parse_module_member` nor by
-                    // `skip_to_next_member_or_module_or_eof` - no further parsing is possible (in
-                    // particular, without this check, compiler tests get stuck)
-                    stop_parsing = true;
+                stop_parsing = next_def_fast_forward(context, curr_token_loc);
+                if stop_parsing {
                     break;
                 }
             }
@@ -3177,6 +3185,22 @@ fn parse_module(
     };
 
     Ok((def, next_mod_attributes))
+}
+
+/// Skips tokens until next definition to be parsed (or EOF) is encountered
+fn next_def_fast_forward(context: &mut Context, prev_token_loc: Loc) -> bool {
+    let mut stop_parsing = false;
+    let next_tok = skip_to_next_desired_tok_or_eof(context, is_start_of_member_or_module);
+    if next_tok == Tok::EOF || next_tok == Tok::Module {
+        // either end of file or next module to potentially be parsed
+        stop_parsing = true;
+    } else if prev_token_loc == context.tokens.current_token_loc() {
+        // token wasn't advanced by either `parse_module_member` nor by
+        // `skip_to_next_member_or_module_or_eof` - no further parsing is possible (in
+        // particular, without this check, compiler tests get stuck)
+        stop_parsing = true;
+    }
+    stop_parsing
 }
 
 /// Skips tokens until reaching the desired one or EOF. Returns true if further parsing is
