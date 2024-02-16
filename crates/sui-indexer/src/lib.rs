@@ -83,11 +83,6 @@ pub struct IndexerConfig {
     pub name_service_registry_id: Option<ObjectID>,
     #[clap(long)]
     pub name_service_reverse_registry_id: Option<ObjectID>,
-    // NOTE: experimental only, do not use in production.
-    #[clap(long)]
-    pub skip_db_commit: bool,
-    #[clap(long)]
-    pub use_v2: bool,
 }
 
 impl IndexerConfig {
@@ -137,8 +132,6 @@ impl Default for IndexerConfig {
             fullnode_sync_worker: true,
             rpc_server_worker: true,
             analytical_worker: false,
-            skip_db_commit: false,
-            use_v2: false,
             name_service_package_address: None,
             name_service_registry_id: None,
             name_service_reverse_registry_id: None,
