@@ -8,8 +8,7 @@ use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::SubscriptionEmptyError;
 use jsonrpsee::types::SubscriptionResult;
 use jsonrpsee::{RpcModule, SubscriptionSink};
-use sui_json_rpc::name_service::NameRecord;
-use sui_json_rpc::name_service::{Domain, NameServiceConfig, NameServiceError};
+use sui_json_rpc::name_service::{Domain, NameRecord, NameServiceConfig, NameServiceError};
 use sui_json_rpc::SuiRpcModule;
 use sui_json_rpc_api::{cap_page_limit, IndexerApiServer};
 use sui_json_rpc_types::{
