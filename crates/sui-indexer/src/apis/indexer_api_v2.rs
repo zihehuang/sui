@@ -8,9 +8,8 @@ use jsonrpsee::core::RpcResult;
 use jsonrpsee::types::SubscriptionEmptyError;
 use jsonrpsee::types::SubscriptionResult;
 use jsonrpsee::{RpcModule, SubscriptionSink};
-use sui_json_rpc::name_service::{
-    name_record_from_option_obj_vec, Domain, NameServiceConfig, NameServiceError,
-};
+use sui_json_rpc::name_service::NameRecord;
+use sui_json_rpc::name_service::{Domain, NameServiceConfig, NameServiceError};
 use sui_json_rpc::SuiRpcModule;
 use sui_json_rpc_api::{cap_page_limit, IndexerApiServer};
 use sui_json_rpc_types::{
@@ -312,7 +311,7 @@ impl IndexerApiServer for IndexerApiV2 {
 
         // fetch both parent (if subdomain) and child records in a single get query.
         // We do this as we do not know if the subdomain is a node or leaf record.
-        let mut domains: Vec<_> = self
+        let domains: Vec<_> = self
             .inner
             .multi_get_objects_in_blocking_task(requests)
             .await?
@@ -320,11 +319,18 @@ impl IndexerApiServer for IndexerApiV2 {
             .map(|o| sui_types::object::Object::try_from(o).ok())
             .collect();
 
-        let name_record = match name_record_from_option_obj_vec(&mut domains, &record_id) {
-            Ok(Some(name_record)) => name_record,
-            Ok(None) => return Ok(None),
-            Err(e) => return Err(IndexerError::NameServiceError(e).into()),
+        // Find the requested object in the list of domains.
+        // We need to loop (in an array of maximum size 2), as we cannot guarantee
+        // the order of the returned objects.
+        let Some(requested_object) = domains
+            .iter()
+            .find(|o| o.as_ref().is_some_and(|o| o.id() == record_id))
+            .and_then(|o| o.clone())
+        else {
+            return Ok(None);
         };
+
+        let name_record: NameRecord = requested_object.try_into().map_err(IndexerError::from)?;
 
         // Handle NODE record case.
         if !name_record.is_leaf_record() {
@@ -335,20 +341,21 @@ impl IndexerApiServer for IndexerApiV2 {
             };
         }
 
-        let parent_name_record =
-            match name_record_from_option_obj_vec(&mut domains, &parent_record_id) {
-                Ok(Some(name_record)) => name_record,
-                _ => {
-                    return Err(
-                        IndexerError::NameServiceError(NameServiceError::NameExpired).into(),
-                    )
-                }
-            };
+        // repeat the process for the parent object too.
+        let Some(requested_object) = domains
+            .iter()
+            .find(|o| o.as_ref().is_some_and(|o| o.id() == parent_record_id))
+            .and_then(|o| o.clone())
+        else {
+            return Err(IndexerError::NameServiceError(NameServiceError::NameExpired).into());
+        };
 
-        if parent_name_record.is_valid_leaf_parent(&name_record)
-            && !parent_name_record.is_node_expired(current_timestamp)
+        let parent_record: NameRecord = requested_object.try_into().map_err(IndexerError::from)?;
+
+        if parent_record.is_valid_leaf_parent(&name_record)
+            && !parent_record.is_node_expired(current_timestamp)
         {
-            Ok(parent_name_record.target_address)
+            Ok(parent_record.target_address)
         } else {
             Err(IndexerError::NameServiceError(NameServiceError::NameExpired).into())
         }
