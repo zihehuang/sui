@@ -354,7 +354,7 @@ impl IndexerApiServer for IndexerApiV2 {
         if parent_record.is_valid_leaf_parent(&name_record)
             && !parent_record.is_node_expired(current_timestamp)
         {
-            Ok(parent_record.target_address)
+            Ok(name_record.target_address)
         } else {
             Err(IndexerError::NameServiceError(NameServiceError::NameExpired).into())
         }
