@@ -1,3 +1,6 @@
 [submodule "bridge/evm/lib/openzeppelin-contracts-upgradeable"]
 	path = bridge/evm/lib/openzeppelin-contracts-upgradeable
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable
+[submodule "bridge/evm/lib/forge-std"]
+	path = bridge/evm/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
