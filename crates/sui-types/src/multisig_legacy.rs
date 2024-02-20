@@ -86,7 +86,11 @@ impl Hash for MultiSigLegacy {
 }
 
 impl AuthenticatorTrait for MultiSigLegacy {
-    fn verify_user_authenticator_epoch(&self, _: EpochId) -> Result<(), SuiError> {
+    fn verify_user_authenticator_epoch(
+        &self,
+        _: EpochId,
+        _: Option<EpochId>,
+    ) -> Result<(), SuiError> {
         Ok(())
     }
 

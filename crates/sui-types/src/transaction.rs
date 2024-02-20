@@ -2274,9 +2274,9 @@ impl Message for SenderSignedData {
         Ok(())
     }
 
-    fn verify_epoch(&self, epoch: EpochId) -> SuiResult {
+    fn verify_epoch(&self, epoch: EpochId, upper_bound_for_max_epoch: Option<u64>) -> SuiResult {
         for sig in &self.inner().tx_signatures {
-            sig.verify_user_authenticator_epoch(epoch)?;
+            sig.verify_user_authenticator_epoch(epoch, upper_bound_for_max_epoch)?;
         }
 
         Ok(())

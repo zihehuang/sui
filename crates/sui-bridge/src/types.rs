@@ -623,7 +623,11 @@ impl Message for BridgeAction {
         Ok(())
     }
 
-    fn verify_epoch(&self, _epoch: EpochId) -> SuiResult {
+    fn verify_epoch(
+        &self,
+        _epoch: EpochId,
+        _upper_bound_for_max_epoch: Option<EpochId>,
+    ) -> SuiResult {
         Ok(())
     }
 }

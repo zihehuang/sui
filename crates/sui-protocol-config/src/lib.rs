@@ -12,7 +12,7 @@ use tracing::{info, warn};
 
 /// The minimum and maximum protocol versions supported by this build.
 const MIN_PROTOCOL_VERSION: u64 = 1;
-const MAX_PROTOCOL_VERSION: u64 = 36;
+const MAX_PROTOCOL_VERSION: u64 = 37;
 
 // Record history of protocol version allocations here:
 //
@@ -382,6 +382,10 @@ struct FeatureFlags {
     // Enable native functions for group operations.
     #[serde(skip_serializing_if = "is_false")]
     enable_group_ops_native_functions: bool,
+
+    // Set the upper bound (current epoch + zklogin_upper_bound_max_epoch) for the max_epoch field of a zklogin signature.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    zklogin_upper_bound_max_epoch: Option<u64>,
 }
 
 fn is_false(b: &bool) -> bool {
@@ -1150,6 +1154,9 @@ impl ProtocolConfig {
     pub fn enable_group_ops_native_functions(&self) -> bool {
         self.feature_flags.enable_group_ops_native_functions
     }
+    pub fn zklogin_upper_bound_max_epoch(&self) -> Option<u64> {
+        self.feature_flags.zklogin_upper_bound_max_epoch
+    }
 }
 
 #[cfg(not(msim))]
@@ -1886,6 +1893,10 @@ impl ProtocolConfig {
                     cfg.consensus_max_transactions_in_block_bytes = Some(6 * 1_024 * 1024);
                     // 6 MB
                 }
+                37 => {
+                    // Set the upper bound of the max_epoch field for a zklogin signature.
+                    cfg.feature_flags.zklogin_upper_bound_max_epoch = Some(2);
+                }
                 // Use this template when making changes:
                 //
                 //     // modify an existing constant.
@@ -1980,6 +1991,9 @@ impl ProtocolConfig {
     }
     pub fn set_consensus_max_transactions_in_block_bytes(&mut self, val: u64) {
         self.consensus_max_transactions_in_block_bytes = Some(val);
+    }
+    pub fn set_zklogin_upper_bound_max_epoch(&mut self, val: Option<u64>) {
+        self.feature_flags.zklogin_upper_bound_max_epoch = val
     }
 }
 

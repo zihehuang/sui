@@ -8,6 +8,7 @@ use shared_crypto::intent::Intent;
 use shared_crypto::intent::IntentMessage;
 use sui_core::authority_client::AuthorityAPI;
 use sui_macros::sim_test;
+use sui_protocol_config::ProtocolConfig;
 use sui_test_transaction_builder::TestTransactionBuilder;
 use sui_types::base_types::SuiAddress;
 use sui_types::crypto::Signature;
@@ -71,7 +72,6 @@ async fn test_zklogin_feature_legacy_address_deny() {
 
 #[sim_test]
 async fn test_legacy_zklogin_address_accept() {
-    use sui_protocol_config::ProtocolConfig;
     let _guard = ProtocolConfig::apply_overrides_for_testing(|_, mut config| {
         config.set_verify_legacy_zklogin_address(true);
         config
@@ -86,41 +86,39 @@ async fn test_legacy_zklogin_address_accept() {
 
 #[sim_test]
 async fn zklogin_end_to_end_test() {
-    run_zklogin_end_to_end_test(TestClusterBuilder::new().with_default_jwks().build().await).await;
+    let test_cluster = TestClusterBuilder::new().with_default_jwks().build().await;
+    run_zklogin_end_to_end_test(&test_cluster).await;
 
-    // wait for current epoch to 11
-    let test_cluster = TestClusterBuilder::new()
-        .with_epoch_duration_ms(1000)
-        .build()
+    // set up upper bound for max_epoch to be current epoch + 2.
+    let _guard = ProtocolConfig::apply_overrides_for_testing(|_, mut config| {
+        config.set_zklogin_upper_bound_max_epoch(Some(2));
+        config
+    });
+
+    // 1. zklogin sig tx fails to execute bc max_epoch is larger than upper bound (max_epoch = 10, current_epoch = 0)
+    let tx = build_zklogin_tx(&test_cluster).await;
+    let res = test_cluster.wallet.execute_transaction_may_fail(tx).await;
+    assert!(res
+        .unwrap_err()
+        .to_string()
+        .contains("ZKLogin max epoch too large 10"));
+
+    // 2. wait for current epoch to 8, tx executes ok bc now max_epoch = 10 is within upper bound.
+    test_cluster
+        .wait_for_epoch_with_timeout(Some(8), Duration::from_secs(180))
         .await;
+    let tx = build_zklogin_tx(&test_cluster).await;
+    let _ = test_cluster
+        .wallet
+        .execute_transaction_must_succeed(tx)
+        .await;
+
+    // 3. wait for current epoch to 11, create a new tx fails to execute bc max_epoch = 10 had expired.
     test_cluster
         .wait_for_epoch_with_timeout(Some(11), Duration::from_secs(180))
         .await;
-    let rgp = test_cluster.get_reference_gas_price().await;
-
-    // zklogin sig tx fails to execute bc it has max_epoch set to 10.
-    let context = &test_cluster.wallet;
-
-    let (eph_kp, pk_zklogin, zklogin_inputs) =
-        &load_test_vectors("../sui-types/src/unit_tests/zklogin_test_vectors.json")[1];
-    let zklogin_addr = (pk_zklogin).into();
-    let gas = test_cluster
-        .fund_address_and_return_gas(rgp, Some(20000000000), zklogin_addr)
-        .await;
-    let tx_data = TestTransactionBuilder::new(zklogin_addr, gas, rgp)
-        .transfer_sui(None, SuiAddress::ZERO)
-        .build();
-    let intent_msg = IntentMessage::new(Intent::sui_transaction(), tx_data.clone());
-
-    let sig: GenericSignature = ZkLoginAuthenticator::new(
-        zklogin_inputs.clone(),
-        10,
-        Signature::new_secure(&intent_msg, eph_kp),
-    )
-    .into();
-    let tx = Transaction::from_generic_sig_data(tx_data.clone(), vec![sig]);
-
-    let res = context.execute_transaction_may_fail(tx).await;
+    let tx = build_zklogin_tx(&test_cluster).await;
+    let res = test_cluster.wallet.execute_transaction_may_fail(tx).await;
     assert!(res
         .unwrap_err()
         .to_string()
@@ -132,57 +130,36 @@ async fn zklogin_end_to_end_test_with_auth_state_creation() {
     // Create test cluster without auth state object in genesis
     let test_cluster = TestClusterBuilder::new()
         .with_protocol_version(23.into())
-        .with_epoch_duration_ms(10000)
+        .with_epoch_duration_ms(1000)
         .with_default_jwks()
         .build()
         .await;
-
     // Wait until we are in an epoch that has zklogin enabled, but the auth state object is not
     // created yet.
     test_cluster.wait_for_protocol_version(24.into()).await;
 
-    // Now wait until the next epoch, when the auth state object is created.
-    test_cluster.wait_for_epoch(None).await;
+    // Now wait till epoch 8 so the zklogin signature has max_epoch as 10 is within upper bound.
+    test_cluster.wait_for_authenticator_state_update().await;
+    test_cluster.wait_for_epoch(Some(8)).await;
 
     // run zklogin end to end test
-    run_zklogin_end_to_end_test(test_cluster).await;
+    run_zklogin_end_to_end_test(&test_cluster).await;
 }
 
-async fn run_zklogin_end_to_end_test(test_cluster: TestCluster) {
+async fn run_zklogin_end_to_end_test(test_cluster: &TestCluster) {
     // wait for JWKs to be fetched and sequenced.
     test_cluster.wait_for_authenticator_state_update().await;
+    let rgp = test_cluster.get_reference_gas_price().await;
     let test_vectors =
         &load_test_vectors("../sui-types/src/unit_tests/zklogin_test_vectors.json")[1..];
     for (kp, pk_zklogin, inputs) in test_vectors {
-        let zklogin_addr = (pk_zklogin).into();
-        let (sender, gas) = test_cluster
-            .wallet
-            .get_one_gas_object()
-            .await
-            .unwrap()
-            .unwrap();
-
-        let rgp = test_cluster.get_reference_gas_price().await;
-        let context = &test_cluster.wallet;
-
+        let zklogin_addr = SuiAddress::from(pk_zklogin);
         // first send some gas to the zklogin address.
-        let transfer_to_zklogin = context.sign_transaction(
-            &TestTransactionBuilder::new(sender, gas, rgp)
-                .transfer_sui(Some(20000000000), zklogin_addr)
-                .build(),
-        );
-        let _ = context
-            .execute_transaction_must_succeed(transfer_to_zklogin)
+        let gas = test_cluster
+            .fund_address_and_return_gas(rgp, Some(20000000000), zklogin_addr)
             .await;
-
-        let gas_obj = context
-            .get_one_gas_object_owned_by_address(zklogin_addr)
-            .await
-            .unwrap()
-            .unwrap();
-
         // create txn to send from the zklogin address.
-        let tx_data = TestTransactionBuilder::new(zklogin_addr, gas_obj, rgp)
+        let tx_data = TestTransactionBuilder::new(zklogin_addr, gas, rgp)
             .transfer_sui(None, SuiAddress::ZERO)
             .build();
 
@@ -198,7 +175,10 @@ async fn run_zklogin_end_to_end_test(test_cluster: TestCluster) {
         let signed_txn = Transaction::from_generic_sig_data(tx_data.clone(), vec![generic_sig]);
 
         // a valid txn executes.
-        context.execute_transaction_must_succeed(signed_txn).await;
+        test_cluster
+            .wallet
+            .execute_transaction_must_succeed(signed_txn)
+            .await;
 
         // a txn with max_epoch mismatch with proof, fails to execute.
         let generic_sig = GenericSignature::ZkLoginAuthenticator(ZkLoginAuthenticator::new(
@@ -207,7 +187,8 @@ async fn run_zklogin_end_to_end_test(test_cluster: TestCluster) {
             eph_sig,
         ));
         let signed_txn_expired = Transaction::from_generic_sig_data(tx_data, vec![generic_sig]);
-        let result = context
+        let result = test_cluster
+            .wallet
             .execute_transaction_may_fail(signed_txn_expired)
             .await;
         assert!(result.is_err());
@@ -253,6 +234,28 @@ async fn test_create_authenticator_state_object() {
     }
 }
 
+async fn build_zklogin_tx(test_cluster: &TestCluster) -> Transaction {
+    let (eph_kp, pk_zklogin, zklogin_inputs) =
+        &load_test_vectors("../sui-types/src/unit_tests/zklogin_test_vectors.json")[0];
+    let zklogin_addr = (pk_zklogin).into();
+    let rgp = test_cluster.get_reference_gas_price().await;
+
+    let gas = test_cluster
+        .fund_address_and_return_gas(rgp, Some(20000000000), zklogin_addr)
+        .await;
+    let tx_data = TestTransactionBuilder::new(zklogin_addr, gas, rgp)
+        .transfer_sui(None, SuiAddress::ZERO)
+        .build();
+    let intent_msg = IntentMessage::new(Intent::sui_transaction(), tx_data.clone());
+
+    let sig: GenericSignature = ZkLoginAuthenticator::new(
+        zklogin_inputs.clone(),
+        10,
+        Signature::new_secure(&intent_msg, eph_kp),
+    )
+    .into();
+    Transaction::from_generic_sig_data(tx_data.clone(), vec![sig])
+}
 // This test is intended to look for forks caused by conflicting / repeated JWK votes from
 // validators.
 #[cfg(msim)]
