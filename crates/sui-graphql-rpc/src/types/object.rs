@@ -1373,7 +1373,7 @@ where
         View::Consistent
     };
 
-    build_objects_query(view, lhs, rhs, page, move |query| filter.apply(query))
+    build_objects_query(view, lhs, rhs, Some(page), move |query| filter.apply(query))
 }
 
 #[cfg(test)]
