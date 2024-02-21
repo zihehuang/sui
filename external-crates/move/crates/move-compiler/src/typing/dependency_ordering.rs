@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::{
-    diag,
     diagnostics::{codes::*, Diagnostic},
     expansion::ast::{Address, ModuleIdent, Value_},
     ice,
