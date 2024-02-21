@@ -6737,11 +6737,13 @@ dependencies = [
  "move-ir-types",
  "move-symbol-pool",
  "once_cell",
+ "pathdiff",
  "petgraph 0.5.1",
  "regex",
  "serde",
  "stacker",
  "tempfile",
+ "vfs",
 ]
 
 [[package]]
@@ -15085,7 +15087,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97fee6b57c6a41524a810daee9286c02d7752c4253064d0b05472833a438f675"
 dependencies = [
  "cfg-if",
- "rand 0.7.3",
+ "rand 0.8.5",
  "static_assertions",
 ]
 
@@ -15386,6 +15388,12 @@ dependencies = [
  "itertools 0.10.5",
  "nom",
 ]
+
+[[package]]
+name = "vfs"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e4fe92cfc1bad19c19925d5eee4b30584dbbdee4ff10183b261acccbef74e2d"
 
 [[package]]
 name = "vsimd"
