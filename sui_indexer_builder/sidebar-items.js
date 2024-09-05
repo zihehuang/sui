@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["indexer_builder","sui_datasource"],"struct":["Task"],"trait":["Tasks"]};

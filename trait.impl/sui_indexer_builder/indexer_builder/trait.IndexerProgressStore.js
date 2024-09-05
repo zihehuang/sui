@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"sui_bridge_indexer":[["impl IndexerProgressStore for <a class=\"struct\" href=\"sui_bridge_indexer/sui_bridge_indexer/struct.PgBridgePersistent.html\" title=\"struct sui_bridge_indexer::sui_bridge_indexer::PgBridgePersistent\">PgBridgePersistent</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
